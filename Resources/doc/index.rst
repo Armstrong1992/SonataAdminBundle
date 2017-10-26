@@ -35,10 +35,9 @@ The demo website can be found at http://demo.sonata-project.org.
    :maxdepth: 1
    :numbered:
 
-   reference/installation
-   reference/getting_started
    reference/configuration
    reference/architecture
+   reference/child_admin
    reference/dashboard
    reference/search
    reference/action_list

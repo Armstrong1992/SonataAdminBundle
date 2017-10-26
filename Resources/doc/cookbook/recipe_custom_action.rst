@@ -72,7 +72,7 @@ or by adding it to your ``admin.yml``:
                 - AppBundle:CRUD
             public: true
 
-For more information about service configuration please refer to Step 3 of :doc:`../reference/getting_started`
+For more information about service configuration please refer to Step 3 of :doc:`../getting_started/creating_an_admin`
 
 Create the custom action in your Controller
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -117,7 +117,7 @@ to implement a ``clone`` action.
             return new RedirectResponse($this->admin->generateUrl('list'));
 
             // if you have a filtered list and want to keep your filters after the redirect
-            // return new RedirectResponse($this->admin->generateUrl('list', $this->admin->getFilterParameters()));
+            // return new RedirectResponse($this->admin->generateUrl('list', array('filter' => $this->admin->getFilterParameters())));
         }
     }
 

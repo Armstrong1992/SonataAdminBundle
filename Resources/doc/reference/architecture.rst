@@ -5,7 +5,7 @@ The architecture of the ``SonataAdminBundle`` is primarily inspired by the Djang
 Project, which is truly a great project. More information can be found at the
 `Django Project Website`_.
 
-If you followed the instructions on the :doc:`getting_started` page, you should by
+If you followed the instructions on the :doc:`../getting_started/creating_an_admin` page, you should by
 now have an ``Admin`` class and an ``Admin`` service. In this chapter, we'll discuss more in
 depth how it works.
 
@@ -15,7 +15,7 @@ The Admin Class
 The ``Admin`` class maps a specific model to the rich CRUD interface provided by
 ``SonataAdminBundle``. In other words, using your ``Admin`` classes, you can configure
 what is shown by ``SonataAdminBundle`` in each CRUD action for the associated model.
-By now you've seen 3 of those actions in the ``getting started`` page: list,
+By now you've seen 3 of those actions in the :doc:`../getting_started/creating_an_admin` page: list,
 filter and form (for creation/editing). However, a fully configured ``Admin`` class
 can define more actions:
 
@@ -94,7 +94,7 @@ your ``Admin`` services. This is done using a ``call`` to the matching ``setter`
                     - [ setLabelTranslatorStrategy, ["@sonata.admin.label.strategy.underscore"]]
                 public: true
 
-Here, we declare the same ``Admin`` service as in the :doc:`getting_started` chapter, but using a
+Here, we declare the same ``Admin`` service as in the :doc:`../getting_started/creating_an_admin` chapter, but using a
 different label translator strategy, replacing the default one. Notice that
 ``sonata.admin.label.strategy.underscore`` is a service provided by ``SonataAdminBundle``,
 but you could just as easily use a service of your own.
@@ -312,122 +312,6 @@ the ``Pool`` class. This class, available as the ``sonata.admin.pool`` service f
 DIC, handles the ``Admin`` classes, lazy-loading them on demand (to reduce overhead)
 and matching each of them to a group. It is also responsible for handling the top level
 template files, administration panel title and logo.
-
-Create child admins
--------------------
-
-Let us say you have a ``PlaylistAdmin`` and a ``VideoAdmin``. You can optionally declare the ``VideoAdmin``
-to be a child of the ``PlaylistAdmin``. This will create new routes like, for example, ``/playlist/{id}/video/list``,
-where the videos will automatically be filtered by post.
-
-To do this, you first need to call the ``addChild`` method in your ``PlaylistAdmin`` service configuration:
-
-.. configuration-block::
-
-    .. code-block:: xml
-
-        <!-- app/config/config.xml -->
-        <service id="sonata.admin.playlist" class="AppBundle\Admin\PlaylistAdmin">
-            <!-- ... -->
-
-            <call method="addChild">
-                <argument type="service" id="sonata.admin.video" />
-            </call>
-        </service>
-
-Then, you have to set the VideoAdmin ``parentAssociationMapping`` attribute to ``playlist`` :
-
-.. code-block:: php
-
-    <?php
-
-    namespace AppBundle\Admin;
-
-    // ...
-
-    class VideoAdmin extends AbstractAdmin
-    {
-        protected $parentAssociationMapping = 'playlist';
-
-        // OR
-
-        public function getParentAssociationMapping()
-        {
-            return 'playlist';
-        }
-    }
-
-To display the ``VideoAdmin`` extend the menu in your ``PlaylistAdmin`` class:
-
-.. code-block:: php
-
-    <?php
-
-    namespace AppBundle\Admin;
-
-    use Knp\Menu\ItemInterface as MenuItemInterface;
-    use Sonata\AdminBundle\Admin\AbstractAdmin;
-    use Sonata\AdminBundle\Admin\AdminInterface;
-
-    class PlaylistAdmin extends AbstractAdmin
-    {
-        // ...
-
-        protected function configureSideMenu(MenuItemInterface $menu, $action, AdminInterface $childAdmin = null)
-        {
-            if (!$childAdmin && !in_array($action, array('edit', 'show'))) {
-                return;
-            }
-
-            $admin = $this->isChild() ? $this->getParent() : $this;
-            $id = $admin->getRequest()->get('id');
-
-            $menu->addChild('View Playlist', array('uri' => $admin->generateUrl('show', array('id' => $id))));
-
-            if ($this->isGranted('EDIT')) {
-                $menu->addChild('Edit Playlist', array('uri' => $admin->generateUrl('edit', array('id' => $id))));
-            }
-
-            if ($this->isGranted('LIST')) {
-                $menu->addChild('Manage Videos', array(
-                    'uri' => $admin->generateUrl('sonata.admin.video.list', array('id' => $id))
-                ));
-            }
-        }
-    }
-
-It also possible to set a dot-separated value, like ``post.author``, if your parent and child admins are not directly related.
-
-Be wary that being a child admin is optional, which means that regular routes
-will be created regardless of whether you actually need them or not. To get rid
-of them, you may override the ``configureRoutes`` method::
-
-    <?php
-    
-    namespace AppBundle\Admin;
-
-    use Sonata\AdminBundle\Admin\AbstractAdmin;
-    use Sonata\AdminBundle\Route\RouteCollection;
-
-    class VideoAdmin extends AbstractAdmin
-    {
-        protected $parentAssociationMapping = 'playlist';
-
-        protected function configureRoutes(RouteCollection $collection)
-        {
-            if ($this->isChild()) {
-
-                // This is the route configuration as a child
-                $collection->clearExcept(['show', 'edit']);
-
-                return;
-            }
-
-            // This is the route configuration as a parent
-            $collection->clear();
-
-        }
-    }
 
 .. _`Django Project Website`: http://www.djangoproject.com/
 .. _`CRUD`: http://en.wikipedia.org/wiki/CRUD
