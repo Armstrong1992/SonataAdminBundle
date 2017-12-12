@@ -11,12 +11,13 @@ lint:
 	composer validate
 	find . -name '*.yml' -not -path './vendor/*' -not -path './Resources/public/vendor/*' | xargs yaml-lint
 	find . \( -name '*.xml' -or -name '*.xliff' \) \
-		-not -path './vendor/*' -not -path './Resources/public/vendor/*' -type f \
-		-exec xmllint --encode UTF-8 --output '{}' --format '{}' \;
+		-not -path './vendor/*' -not -path './Resources/public/vendor/*' \
+		| xargs -I'{}' xmllint --encode UTF-8 --output '{}' --format '{}'
+	php-cs-fixer fix --verbose
 	git diff --exit-code
 
 test:
 	phpunit -c phpunit.xml.dist --coverage-clover build/logs/clover.xml
 
 docs:
-	cd Resources/doc && sphinx-build -W -b html -d _build/doctrees . _build/html
+	cd docs && sphinx-build -W -b html -d _build/doctrees . _build/html

@@ -47,6 +47,81 @@ specified in a field description cannot be found was removed.
 - Removed deprecated `AbstractAdmin::buildSideMenu` method
 - `AdminInterface::configure` was removed
 
+## [3.28.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.27.0...3.28.0) - 2017-11-30
+### Added
+- Added `CRUDController::redirectToList` method for all list redirections
+- added Russian translations
+
+### Changed
+- Handle empty id list in `CRUDController::batchAction`
+- All services without a declared visibility are now public
+
+### Fixed
+- It is now allowed to install Symfony 4
+- Updated `src/Resources/views/standard_layout.html.twig` template in order to remove whitespace rendering before HTML DOCTYPE declaration.
+- interference with other bundles
+
+### Deprecated
+- using the `ChildrenVoter` class
+- using the `sonata.admin.menu.matcher.voter.children` service
+
+### Security
+- Fixed XSS vulnerability in autocomplete form type
+
+## [3.27.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.26.0...3.27.0) - 2017-11-26
+### Added
+- Added some Japanese messages
+- Added `CRUDController::renderWithExtraParams` as a replacement for the `render` method
+
+### Deprecated
+- Deprecated `CRUDController::render`
+
+### Fixed
+- Problem with FormRenderer not having environment causing that inline collection was unusable on SF 3.4
+- Deprecation warning for overriding `Controller::render` which is supposed to be final
+
+## [3.26.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.25.1...3.26.0) - 2017-11-22
+### Added
+- Add html tag attributes support for sonata_type_model_autocomplete form type
+- Added edit button that opens in dialog instead of add if there is object already in sonata type model list
+
+### Fixed
+- check if the field is used to sort the list
+- Add a check for existing var associationadmin which is null for filter
+- Fixed `AbstractAdmin::getSubject()` behavior when `id` parameter is not specified
+- Add alias on `ChoiceType` uses to avoid collisions on Form filter classes
+- BC-break in `CRUDController::render()`
+
+### Removed
+- Old usage of read_only var
+
+## [3.25.1](https://github.com/sonata-project/SonataAdminBundle/compare/3.25.0...3.25.1) - 2017-11-20
+### Fixed
+- Wrong configuration for `DateTimeType` and `DateType` filters
+
+## [3.25.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.24.0...3.25.0) - 2017-11-19
+### Added
+- Ability to configure sonata main admin and super admin roles under the `security` configuration key
+- Added `translation_domain` key to `AdminStatsBlockService` to change or disable translation
+- Add support for `add` button in `sonata_type_model_autocomplete`
+
+### Changed
+- Changed internal folder structure to `src`, `tests` and `docs`
+- a condition to check if the navbar is to be displayed
+
+### Fixed
+- subject assignment in embedded admins
+- fixed choice_translation_domain for expanded choices in admin
+- make false translation_domain working for the label if no translation is needed
+- Removed overridden method `CRUDController::addFlash` which is final in SF 3.4.
+- Don't translate empty placeholder on form render
+- Register commands as services to prevent deprecation notices on Symfony 3.4
+- `AbstractAdmin::hasSubject` is now populating `AbstractAdmin::$subject` property
+- Deprecation about `Symfony\Component\DependencyInjection\DefinitionDecorator`
+- getRuntime now receives a non deprecated runtime
+- Fix for getRuntime on Symfony older than 3.4
+- displaying a title when there are no specific actions
+
 ## [3.24.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.23.0...3.24.0) - 2017-10-23
 ### Added
 - Add support for unlimited nested child admins.
@@ -102,7 +177,7 @@ specified in a field description cannot be found was removed.
 - Fixed AbstractAdmin::getSubject on admins with parentFieldDescription
 - Fixed deprecation when using hidden form type in model autocomplete
 - Fixed the extra option being retrieved. The translation catalogue to be used is inside the label_catalogue option, not translation_domain.
-- setting the column title 
+- setting the column title
 - Html tags do not appear in the meta title
 
 ## [3.21.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.20.1...3.21.0) - 2017-08-14
@@ -180,7 +255,7 @@ specified in a field description cannot be found was removed.
 - Changed GroupMenuProvider::get to setDisplay(false) on menuItem if on_top used and no items could be displayed
 
 ### Fixed
-- Fixed the bug that caused an error "The helper "dialog" is not defined." on Symfony3 with new `\Sensio\Bundle\GeneratorBundle\Command\Helper\QuestionHelper` when you run command "sonata:admin:generate-object-acl". 
+- Fixed the bug that caused an error "The helper "dialog" is not defined." on Symfony3 with new `\Sensio\Bundle\GeneratorBundle\Command\Helper\QuestionHelper` when you run command "sonata:admin:generate-object-acl".
 - Fixed issue on getExtendedType of MopaCompatibilityTypeFieldExtension and ChoiceTypeExtension because the method requires to return the fully-qualified class name (FQCN) since symfony version 2.8
 - `ModelType` have choices as values by default now on SF 2.7+.
 - Users without the `LIST` role can access the autocomplete items by configuring the `target_admin_access_action` option
