@@ -62,19 +62,7 @@ class AdminType extends AbstractType
                     if ($this->getFieldDescription($options)->getFieldName() === $options['property_path']) {
                         $path = $options['property_path'];
                     } else {
-<<<<<<< HEAD:Form/Type/AdminType.php
-                        // this check is to work around duplication issue in property path
-                        // https://github.com/sonata-project/SonataAdminBundle/issues/4425
-                        if ($this->getFieldDescription($options)->getFieldName() === $options['property_path']) {
-                            $path = $options['property_path'];
-                        } else {
-                            $path = $this->getFieldDescription($options)->getFieldName().$options['property_path'];
-                        }
-                        // for PropertyAccessor >= 2.5
-                        $subject = $p->getValue($parentSubject, $path);
-=======
                         $path = $this->getFieldDescription($options)->getFieldName().$options['property_path'];
->>>>>>> fc32dc300a3eac6753b64f820be50d27a73b7360:src/Form/Type/AdminType.php
                     }
 
                     $subject = $p->getValue($parentSubject, $path);
@@ -119,22 +107,22 @@ class AdminType extends AbstractType
     public function configureOptions(OptionsResolver $resolver)
     {
         $resolver->setDefaults([
-            'delete' => function (Options $options) {
-                return false !== $options['btn_delete'];
-            },
-            'delete_options' => [
-                'type' => CheckboxType::class,
-                'type_options' => [
-                    'required' => false,
-                    'mapped' => false,
-                ],
-            ],
-            'auto_initialize' => false,
-            'btn_add' => 'link_add',
-            'btn_list' => 'link_list',
-            'btn_delete' => 'link_delete',
-            'btn_catalogue' => 'SonataAdminBundle',
-        ]);
+                                   'delete' => function (Options $options) {
+                                       return false !== $options['btn_delete'];
+                                   },
+                                   'delete_options' => [
+                                       'type' => CheckboxType::class,
+                                       'type_options' => [
+                                           'required' => false,
+                                           'mapped' => false,
+                                       ],
+                                   ],
+                                   'auto_initialize' => false,
+                                   'btn_add' => 'link_add',
+                                   'btn_list' => 'link_list',
+                                   'btn_delete' => 'link_delete',
+                                   'btn_catalogue' => 'SonataAdminBundle',
+                               ]);
     }
 
     /**
