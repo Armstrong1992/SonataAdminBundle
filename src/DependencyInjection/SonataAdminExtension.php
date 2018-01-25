@@ -11,6 +11,7 @@
 
 namespace Sonata\AdminBundle\DependencyInjection;
 
+use JMS\DiExtraBundle\DependencyInjection\Configuration as JMSDiExtraBundleDependencyInjectionConfiguration;
 use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Admin\AbstractAdminExtension;
 use Sonata\AdminBundle\Admin\AdminExtensionInterface;
@@ -109,10 +110,6 @@ use Symfony\Component\HttpKernel\DependencyInjection\Extension;
  */
 final class SonataAdminExtension extends Extension implements PrependExtensionInterface
 {
-    /**
-     * @param array            $configs   An array of configuration settings
-     * @param ContainerBuilder $container A ContainerBuilder instance
-     */
     public function load(array $configs, ContainerBuilder $container)
     {
         $bundles = $container->getParameter('kernel.bundles');
@@ -130,7 +127,7 @@ final class SonataAdminExtension extends Extension implements PrependExtensionIn
             // integrate the SonataUserBundle if the bundle exists
             array_unshift($configs, [
                 'templates' => [
-                    'history_revision_timestamp' => 'SonataIntlBundle:CRUD:history_revision_timestamp.html.twig',
+                    'history_revision_timestamp' => '@SonataIntl/CRUD/history_revision_timestamp.html.twig',
                 ],
             ]);
         }
@@ -156,8 +153,8 @@ final class SonataAdminExtension extends Extension implements PrependExtensionIn
         $configuration = $this->getConfiguration($configs, $container);
         $config = $this->processConfiguration($configuration, $configs);
 
-        $config['options']['javascripts'] = $config['assets']['javascripts'];
-        $config['options']['stylesheets'] = $config['assets']['stylesheets'];
+        $config['options']['javascripts'] = $this->buildJavascripts($config);
+        $config['options']['stylesheets'] = $this->buildStylesheets($config);
         $config['options']['role_admin'] = $config['security']['role_admin'];
         $config['options']['role_super_admin'] = $config['security']['role_super_admin'];
 
@@ -172,36 +169,36 @@ final class SonataAdminExtension extends Extension implements PrependExtensionIn
 
         $container->setParameter('sonata.admin.configuration.global_search.empty_boxes', $config['global_search']['empty_boxes']);
         $container->setParameter('sonata.admin.configuration.templates', $config['templates'] + [
-            'user_block' => 'SonataAdminBundle:Core:user_block.html.twig',
-            'add_block' => 'SonataAdminBundle:Core:add_block.html.twig',
-            'layout' => 'SonataAdminBundle::standard_layout.html.twig',
-            'ajax' => 'SonataAdminBundle::ajax_layout.html.twig',
-            'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig',
-            'list' => 'SonataAdminBundle:CRUD:list.html.twig',
-            'filter' => 'SonataAdminBundle:Form:filter_admin_fields.html.twig',
-            'show' => 'SonataAdminBundle:CRUD:show.html.twig',
-            'show_compare' => 'SonataAdminBundle:CRUD:show_compare.html.twig',
-            'edit' => 'SonataAdminBundle:CRUD:edit.html.twig',
-            'history' => 'SonataAdminBundle:CRUD:history.html.twig',
-            'history_revision_timestamp' => 'SonataAdminBundle:CRUD:history_revision_timestamp.html.twig',
-            'acl' => 'SonataAdminBundle:CRUD:acl.html.twig',
-            'action' => 'SonataAdminBundle:CRUD:action.html.twig',
-            'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig',
-            'preview' => 'SonataAdminBundle:CRUD:preview.html.twig',
-            'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig',
-            'delete' => 'SonataAdminBundle:CRUD:delete.html.twig',
-            'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig',
-            'select' => 'SonataAdminBundle:CRUD:list__select.html.twig',
-            'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig',
-            'inner_list_row' => 'SonataAdminBundle:CRUD:list_inner_row.html.twig',
-            'base_list_field' => 'SonataAdminBundle:CRUD:base_list_field.html.twig',
-            'pager_links' => 'SonataAdminBundle:Pager:links.html.twig',
-            'pager_results' => 'SonataAdminBundle:Pager:results.html.twig',
-            'tab_menu_template' => 'SonataAdminBundle:Core:tab_menu_template.html.twig',
-            'knp_menu_template' => 'SonataAdminBundle:Menu:sonata_menu.html.twig',
-            'outer_list_rows_mosaic' => 'SonataAdminBundle:CRUD:list_outer_rows_mosaic.html.twig',
-            'outer_list_rows_list' => 'SonataAdminBundle:CRUD:list_outer_rows_list.html.twig',
-            'outer_list_rows_tree' => 'SonataAdminBundle:CRUD:list_outer_rows_tree.html.twig',
+            'user_block' => '@SonataAdmin/Core/user_block.html.twig',
+            'add_block' => '@SonataAdmin/Core/add_block.html.twig',
+            'layout' => '@SonataAdmin/standard_layout.html.twig',
+            'ajax' => '@SonataAdmin/ajax_layout.html.twig',
+            'dashboard' => '@SonataAdmin/Core/dashboard.html.twig',
+            'list' => '@SonataAdmin/CRUD/list.html.twig',
+            'filter' => '@SonataAdmin/Form/filter_admin_fields.html.twig',
+            'show' => '@SonataAdmin/CRUD/show.html.twig',
+            'show_compare' => '@SonataAdmin/CRUD/show_compare.html.twig',
+            'edit' => '@SonataAdmin/CRUD/edit.html.twig',
+            'history' => '@SonataAdmin/CRUD/history.html.twig',
+            'history_revision_timestamp' => '@SonataAdmin/CRUD/history_revision_timestamp.html.twig',
+            'acl' => '@SonataAdmin/CRUD/acl.html.twig',
+            'action' => '@SonataAdmin/CRUD/action.html.twig',
+            'short_object_description' => '@SonataAdmin/Helper/short-object-description.html.twig',
+            'preview' => '@SonataAdmin/CRUD/preview.html.twig',
+            'list_block' => '@SonataAdmin/Block/block_admin_list.html.twig',
+            'delete' => '@SonataAdmin/CRUD/delete.html.twig',
+            'batch' => '@SonataAdmin/CRUD/list__batch.html.twig',
+            'select' => '@SonataAdmin/CRUD/list__select.html.twig',
+            'batch_confirmation' => '@SonataAdmin/CRUD/batch_confirmation.html.twig',
+            'inner_list_row' => '@SonataAdmin/CRUD/list_inner_row.html.twig',
+            'base_list_field' => '@SonataAdmin/CRUD/base_list_field.html.twig',
+            'pager_links' => '@SonataAdmin/Pager/links.html.twig',
+            'pager_results' => '@SonataAdmin/Pager/results.html.twig',
+            'tab_menu_template' => '@SonataAdmin/Core/tab_menu_template.html.twig',
+            'knp_menu_template' => '@SonataAdmin/Menu/sonata_menu.html.twig',
+            'outer_list_rows_mosaic' => '@SonataAdmin/CRUD/list_outer_rows_mosaic.html.twig',
+            'outer_list_rows_list' => '@SonataAdmin/CRUD/list_outer_rows_list.html.twig',
+            'outer_list_rows_tree' => '@SonataAdmin/CRUD/list_outer_rows_tree.html.twig',
         ]);
         $container->setParameter('sonata.admin.configuration.admin_services', $config['admin_services']);
         $container->setParameter('sonata.admin.configuration.dashboard_groups', $config['dashboard']['groups']);
@@ -309,8 +306,6 @@ final class SonataAdminExtension extends Extension implements PrependExtensionIn
      * Allow an extension to prepend the extension configurations.
      *
      * NEXT_MAJOR: remove all code that deals with JMSDiExtraBundle
-     *
-     * @param ContainerBuilder $container
      */
     public function prepend(ContainerBuilder $container)
     {
@@ -351,7 +346,7 @@ final class SonataAdminExtension extends Extension implements PrependExtensionIn
             $annotationPatterns = [$sonataAdminPattern];
         } else {
             // get annotation_patterns default from DiExtraBundle configuration
-            $diExtraConfigDefinition = new \JMS\DiExtraBundle\DependencyInjection\Configuration();
+            $diExtraConfigDefinition = new JMSDiExtraBundleDependencyInjectionConfiguration();
             // FIXME: this will break if DiExtraBundle adds any mandatory configuration
             $diExtraConfig = $this->processConfiguration($diExtraConfigDefinition, []);
 
@@ -451,12 +446,41 @@ final class SonataAdminExtension extends Extension implements PrependExtensionIn
         ]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getNamespace()
     {
         return 'https://sonata-project.org/schema/dic/admin';
+    }
+
+    private function buildStylesheets($config)
+    {
+        return $this->mergeArray(
+            $config['assets']['stylesheets'],
+            $config['assets']['extra_stylesheets'],
+            $config['assets']['remove_stylesheets']
+        );
+    }
+
+    private function buildJavascripts($config)
+    {
+        return $this->mergeArray(
+            $config['assets']['javascripts'],
+            $config['assets']['extra_javascripts'],
+            $config['assets']['remove_javascripts']
+        );
+    }
+
+    private function mergeArray($array, $addArray, $removeArray = [])
+    {
+        foreach ($addArray as $toAdd) {
+            array_push($array, $toAdd);
+        }
+        foreach ($removeArray as $toRemove) {
+            if (in_array($toRemove, $array)) {
+                array_splice($array, array_search($toRemove, $array), 1);
+            }
+        }
+
+        return $array;
     }
 
     private function replacePropertyAccessor(ContainerBuilder $container)

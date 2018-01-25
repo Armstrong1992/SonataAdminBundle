@@ -28,9 +28,6 @@ use Symfony\Component\DependencyInjection\Reference;
  */
 final class AddDependencyCallsCompilerPass implements CompilerPassInterface
 {
-    /**
-     * {@inheritdoc}
-     */
     public function process(ContainerBuilder $container)
     {
         // check if translator service exist
@@ -212,9 +209,6 @@ final class AddDependencyCallsCompilerPass implements CompilerPassInterface
 
     /**
      * This method read the attribute keys and configure admin class to use the related dependency.
-     *
-     * @param Definition $definition
-     * @param array      $attributes
      */
     public function applyConfigurationFromAttribute(Definition $definition, array $attributes)
     {
@@ -247,9 +241,7 @@ final class AddDependencyCallsCompilerPass implements CompilerPassInterface
     /**
      * Apply the default values required by the AdminInterface to the Admin service definition.
      *
-     * @param ContainerBuilder $container
-     * @param string           $serviceId
-     * @param array            $attributes
+     * @param string $serviceId
      *
      * @return Definition
      */
@@ -345,11 +337,6 @@ final class AddDependencyCallsCompilerPass implements CompilerPassInterface
         return $definition;
     }
 
-    /**
-     * @param ContainerBuilder $container
-     * @param Definition       $definition
-     * @param array            $overwrittenTemplates
-     */
     public function fixTemplates(ContainerBuilder $container, Definition $definition, array $overwrittenTemplates = [])
     {
         $definedTemplates = $container->getParameter('sonata.admin.configuration.templates');
@@ -374,10 +361,10 @@ final class AddDependencyCallsCompilerPass implements CompilerPassInterface
                 && $method[1][0] === Pager::TYPE_SIMPLE
                 && (
                     !isset($definedTemplates['pager_results'])
-                    || 'SonataAdminBundle:Pager:results.html.twig' === $definedTemplates['pager_results']
+                    || '@SonataAdmin/Pager/results.html.twig' === $definedTemplates['pager_results']
                 )
             ) {
-                $definedTemplates['pager_results'] = 'SonataAdminBundle:Pager:simple_pager_results.html.twig';
+                $definedTemplates['pager_results'] = '@SonataAdmin/Pager/simple_pager_results.html.twig';
             }
 
             $methods[$pos] = $method;
@@ -397,13 +384,12 @@ final class AddDependencyCallsCompilerPass implements CompilerPassInterface
 
     /**
      * Replace the empty arguments required by the Admin service definition.
-     *
-     * @param array           $defaultArguments
-     * @param Definition      $definition
-     * @param Definition|null $parentDefinition
      */
-    private function replaceDefaultArguments(array $defaultArguments, Definition $definition, Definition $parentDefinition = null)
-    {
+    private function replaceDefaultArguments(
+        array $defaultArguments,
+        Definition $definition,
+        Definition $parentDefinition = null
+    ) {
         $arguments = $definition->getArguments();
         $parentArguments = $parentDefinition ? $parentDefinition->getArguments() : [];
 

@@ -8,8 +8,8 @@ any text filter will be set to ``true`` by default.
 Customization
 -------------
 
-The main action is using the template ``SonataAdminBundle:Core:search.html.twig``. And each search is handled by a
-``block``, the template for the block is ``SonataAdminBundle:Block:block_search_result.html.twig``.
+The main action is using the template ``@SonataAdmin/Core/search.html.twig``. And each search is handled by a
+``block``, the template for the block is ``@SonataAdmin/Block/block_search_result.html.twig``.
 
 The default template values can be configured in the configuration section
 
@@ -22,9 +22,9 @@ The default template values can be configured in the configuration section
         sonata_admin:
             templates:
                 # other configuration options
-                search:              SonataAdminBundle:Core:search.html.twig
-                search_result_block: SonataAdminBundle:Block:block_search_result.html.twig
-                
+                search:              '@SonataAdmin/Core/search.html.twig'
+                search_result_block: '@SonataAdmin/Block/block_search_result.html.twig'
+
 You also need to configure the block in the sonata block config
 
 .. configuration-block::
@@ -36,7 +36,7 @@ You also need to configure the block in the sonata block config
         sonata_block:
             blocks:
                 sonata.admin.block.search_result:
-                contexts: [admin]
+                    contexts: [admin]
 
 You can also configure the block template per admin while defining the admin:
 
@@ -72,7 +72,7 @@ permissions exists. If no route is found, the item will be displayed as a text.
     {
         // ...
 
-        protected $searchResultActions = array('edit', 'show');
+        protected $searchResultActions = ['edit', 'show'];
 
         // ...
     }

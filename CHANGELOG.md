@@ -2,50 +2,61 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [4.x]
+## [3.31.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.30.1...3.31.0) - 2018-01-23
 ### Added
-- Add the `hasAccess` method to the AdminInterface
-- Add the `getExportFields` method to the AdminInterface
-- Add the `setTemplates` method to the AdminInterface
-- Add the `setTemplate` method to the AdminInterface
-- Add the `getTemplates` method to the AdminInterface
-- Add the `getClassnameLabel` method to the AdminInterface
-- Add the `getPersistentParameter` method to the AdminInterface
-- Add the `preValidate` method to the AdminInterface
-- Add the `getSubClasses` method to the AdminInterface
-- Add the `addSubClass` method to the AdminInterface
-- Add the `getDashboardActions` method to the AdminInterface
-- Add the `getActionButtons` method to the AdminInterface
-- Add the ``configureActionButtons`` method to the AdminExtensionInterface
-- Add the ``configureBatchActions`` method to the AdminExtensionInterface
-- Added the `getAccessMapping` method to the AdminExtensionInterface
-- Add the `isCurrentRoute` method to the AdminInterface
+- Added new `safe_label` option to allow HTML pass-through on autocomplete form type
+- Added filter counter to admin lists
 
 ### Changed
-- `AbstractAdmin::configureActionButtons` method is now protected
-- `AbstractAdmin::getActionButtons` is now final
-- `AbstractAdmin::configure` method is now protected
-- `AbstractAdmin::buildDatagrid` method is now private
-- `AbstractAdmin::urlize` method is now protected and final
-- `AbstractAdmin::defineFormBuilder` method is now private
-- `AbstractAdmin::configureActionButtons` method signature has changed
-- Moved default buttons from `AbstractAdmin::configureActionButtons` to `AbstractAdmin::getActionButtons`
-- `AbstractAdmin::getBatchActions` is now final
+- template paths to adapt to the convention
+- Replace twig paths with new naming conventions
 
-### Removed
-- Removed BC handler for deprecated `view` `_action`
-- The fallback mechanism that loads a default template when the template
-specified in a field description cannot be found was removed.
-- The Sonata Twig extension has been made final, you may no longer extend it to
-  build your own extension (which is deprecated by Twig anyway)
-- Public access to the translator strategy services has been removed, namely:
-  - `sonata.admin.label.strategy.bc`
-  - `sonata.admin.label.strategy.form_component`
-  - `sonata.admin.label.strategy.native`
-  - `sonata.admin.label.strategy.noop`
-  - `sonata.admin.label.strategy.underscore`
-- Removed deprecated `AbstractAdmin::buildSideMenu` method
-- `AdminInterface::configure` was removed
+### Fixed
+- `request` attribute deprecation on `knp_menu.voter`
+- Added path to cookies when hiding sidebar to avoid creating multiple cookies
+- Nested arrays will show properly on show/list fields
+- path to dashboard
+- ModelHiddenType - default hidden attribute is now set to true
+- Fix bug when we pass null as fieldName to BaseFieldDescriptor::getFieldValue
+
+## [3.30.1](https://github.com/sonata-project/SonataAdminBundle/compare/3.30.0...3.30.1) - 2018-01-02
+### Added
+- Make explicit dependency with `symfony/asset`
+
+### Changed
+- Admin and filter services are shared
+
+## [3.30.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.29.0...3.30.0) - 2017-12-25
+### Changed
+- Menu on the left side stays hidden while changing pages.
+
+### Deprecated
+- `AbstractAdmin::addSubClass()`
+
+### Fixed
+- Checking for fixed class on body before adjusting the position of the content div
+- Fixed container compile error, if JMSDiExtraBundle is enabled.
+- Fixed twig dependency for sonata.admin.controller.admin service
+
+## [3.29.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.28.0...3.29.0) - 2017-12-16
+### Added
+- Added edit button functionality
+- Added possibility to add and remove javascripts/stylesheets without adding all defaults again
+
+### Changed
+- added missing Dutch translations
+- Services tagged with `sonata.admin` and `sonata.admin.filter.type` are now public
+- Improvements on `AbstractAdmin::getClass()` method
+
+### Fixed
+- Fixed calling route generator with boolean value
+- Replace FQCN strings with `::class` constants
+- Add trans filter to form_group and form_tab description
+- added Turkish translations
+- don't display fields that are missing in child classes
+- Patched collection form handling script to maintain File input state when new items are added to collections
+- exporter-related error during cache:clear command.
+- added missing italian translations
 
 ## [3.28.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.27.0...3.28.0) - 2017-11-30
 ### Added
@@ -177,7 +188,7 @@ specified in a field description cannot be found was removed.
 - Fixed AbstractAdmin::getSubject on admins with parentFieldDescription
 - Fixed deprecation when using hidden form type in model autocomplete
 - Fixed the extra option being retrieved. The translation catalogue to be used is inside the label_catalogue option, not translation_domain.
-- setting the column title
+- setting the column title 
 - Html tags do not appear in the meta title
 
 ## [3.21.0](https://github.com/sonata-project/SonataAdminBundle/compare/3.20.1...3.21.0) - 2017-08-14
@@ -255,7 +266,7 @@ specified in a field description cannot be found was removed.
 - Changed GroupMenuProvider::get to setDisplay(false) on menuItem if on_top used and no items could be displayed
 
 ### Fixed
-- Fixed the bug that caused an error "The helper "dialog" is not defined." on Symfony3 with new `\Sensio\Bundle\GeneratorBundle\Command\Helper\QuestionHelper` when you run command "sonata:admin:generate-object-acl".
+- Fixed the bug that caused an error "The helper "dialog" is not defined." on Symfony3 with new `\Sensio\Bundle\GeneratorBundle\Command\Helper\QuestionHelper` when you run command "sonata:admin:generate-object-acl". 
 - Fixed issue on getExtendedType of MopaCompatibilityTypeFieldExtension and ChoiceTypeExtension because the method requires to return the fully-qualified class name (FQCN) since symfony version 2.8
 - `ModelType` have choices as values by default now on SF 2.7+.
 - Users without the `LIST` role can access the autocomplete items by configuring the `target_admin_access_action` option

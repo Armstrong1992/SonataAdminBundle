@@ -36,9 +36,9 @@ merges them onto a single target item. It should only be available when two cond
           $this->hasRoute('edit') && $this->hasAccess('edit') &&
           $this->hasRoute('delete') && $this->hasAccess('delete')
         ) {
-            $actions['merge'] = array(
+            $actions['merge'] = [
                 'ask_confirmation' => true
-            );
+            ];
 
         }
 
@@ -92,7 +92,9 @@ granularity), the passed query is ``null``.
                 $this->addFlash('sonata_flash_info', 'flash_batch_merge_no_target');
 
                 return new RedirectResponse(
-                    $this->admin->generateUrl('list', array('filter' => $this->admin->getFilterParameters()))
+                    $this->admin->generateUrl('list', [
+                        'filter' => $this->admin->getFilterParameters()
+                    ])
                 );
             }
 
@@ -110,14 +112,18 @@ granularity), the passed query is ``null``.
                 $this->addFlash('sonata_flash_error', 'flash_batch_merge_error');
 
                 return new RedirectResponse(
-                    $this->admin->generateUrl('list', array('filter' => $this->admin->getFilterParameters()))
+                    $this->admin->generateUrl('list', [
+                        'filter' => $this->admin->getFilterParameters()
+                    ])
                 );
             }
 
             $this->addFlash('sonata_flash_success', 'flash_batch_merge_success');
 
             return new RedirectResponse(
-                $this->admin->generateUrl('list', array('filter' => $this->admin->getFilterParameters()))
+                $this->admin->generateUrl('list', [
+                    'filter' => $this->admin->getFilterParameters()
+                ])
             );
         }
 
@@ -136,7 +142,7 @@ of objects to manipulate. We can override this behavior by changing our list tem
 .. code-block:: html+jinja
 
     {# src/AppBundle/Resources/views/CRUD/list__batch.html.twig #}
-    {# see SonataAdminBundle:CRUD:list__batch.html.twig for the current default template #}
+    {# see @SonataAdmin/CRUD/list__batch.html.twig for the current default template #}
 
     {% extends admin.getTemplate('base_list_field') %}
 

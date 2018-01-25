@@ -30,6 +30,7 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\PropertyAccess\PropertyAccessor;
 use Symfony\Component\Routing\RouterInterface;
 
@@ -289,8 +290,8 @@ class AddDependencyCallsCompilerPassTest extends TestCase
             switch ($name) {
                 case 'setTemplates':
                     $this->assertSame('foobar.twig.html', $parameters[0]['user_block']);
-                    $this->assertSame('SonataAdminBundle:Pager:results.html.twig', $parameters[0]['pager_results']);
-                    $this->assertSame('SonataAdminBundle:Button:create_button.html.twig', $parameters[0]['button_create']);
+                    $this->assertSame('@SonataAdmin/Pager/results.html.twig', $parameters[0]['pager_results']);
+                    $this->assertSame('@SonataAdmin/Button/create_button.html.twig', $parameters[0]['button_create']);
 
                     break;
 
@@ -314,7 +315,7 @@ class AddDependencyCallsCompilerPassTest extends TestCase
             switch ($name) {
                 case 'setTemplates':
                     $this->assertSame('foo.twig.html', $parameters[0]['user_block']);
-                    $this->assertSame('SonataAdminBundle:Pager:simple_pager_results.html.twig', $parameters[0]['pager_results']);
+                    $this->assertSame('@SonataAdmin/Pager/simple_pager_results.html.twig', $parameters[0]['pager_results']);
 
                     break;
 
@@ -655,6 +656,9 @@ class AddDependencyCallsCompilerPassTest extends TestCase
         $container
             ->register('form.factory')
             ->setClass(FormFactoryInterface::class);
+        $container
+            ->register('request_stack')
+            ->setClass(RequestStack::class);
         foreach ([
             'doctrine_phpcr' => 'PHPCR',
             'orm' => 'ORM', ] as $key => $bundleSubstring) {

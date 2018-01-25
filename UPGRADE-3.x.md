@@ -1,6 +1,21 @@
 UPGRADE 3.x
 ===========
 
+UPGRADE FROM 3.30 to 3.31
+=========================
+
+## Deprecated AdminVoter::setRequest
+
+The `AdminVoter::setRequest` is deprecated and should not be used anymore.
+
+UPGRADE FROM 3.29 to 3.30
+=========================
+
+## Deprecated AbstractAdmin::addSubClass
+
+This method was inconsistent with the structure of `AbstractAdmin::$subClasses`,
+which is supposed to contain a hash that associates aliases with FQCNs. Use `AbstractAdmin::setSubClasses` instead.
+
 UPGRADE FROM 3.27 to 3.28
 =========================
 

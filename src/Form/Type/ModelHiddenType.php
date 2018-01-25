@@ -25,9 +25,6 @@ use Symfony\Component\OptionsResolver\OptionsResolverInterface;
  */
 class ModelHiddenType extends AbstractType
 {
-    /**
-     * {@inheritdoc}
-     */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $builder
@@ -45,20 +42,17 @@ class ModelHiddenType extends AbstractType
         $this->configureOptions($resolver);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function configureOptions(OptionsResolver $resolver)
     {
         $resolver->setDefaults([
             'model_manager' => null,
             'class' => null,
+            'attr' => [
+                'hidden' => true,
+            ],
         ]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getParent()
     {
         return HiddenType::class;
@@ -74,9 +68,6 @@ class ModelHiddenType extends AbstractType
         return $this->getBlockPrefix();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getBlockPrefix()
     {
         return 'sonata_type_model_hidden';
