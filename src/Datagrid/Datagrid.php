@@ -72,15 +72,13 @@ class Datagrid implements DatagridInterface
      */
     protected $results;
 
-    /**
-     * @param ProxyQueryInterface        $query
-     * @param FieldDescriptionCollection $columns
-     * @param PagerInterface             $pager
-     * @param FormBuilderInterface       $formBuilder
-     * @param array                      $values
-     */
-    public function __construct(ProxyQueryInterface $query, FieldDescriptionCollection $columns, PagerInterface $pager, FormBuilderInterface $formBuilder, array $values = [])
-    {
+    public function __construct(
+        ProxyQueryInterface $query,
+        FieldDescriptionCollection $columns,
+        PagerInterface $pager,
+        FormBuilderInterface $formBuilder,
+        array $values = []
+    ) {
         $this->pager = $pager;
         $this->query = $query;
         $this->values = $values;
@@ -88,17 +86,11 @@ class Datagrid implements DatagridInterface
         $this->formBuilder = $formBuilder;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getPager()
     {
         return $this->pager;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getResults()
     {
         $this->buildPager();
@@ -110,9 +102,6 @@ class Datagrid implements DatagridInterface
         return $this->results;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function buildPager()
     {
         if ($this->bound) {
@@ -148,7 +137,9 @@ class Datagrid implements DatagridInterface
 
         foreach ($this->getFilters() as $name => $filter) {
             $this->values[$name] = isset($this->values[$name]) ? $this->values[$name] : null;
-            $filter->apply($this->query, $data[$filter->getFormName()]);
+            if ($filter->isActive()) {
+                $filter->apply($this->query, $data[$filter->getFormName()]);
+            }
         }
 
         if (isset($this->values['_sort_by'])) {
@@ -189,65 +180,41 @@ class Datagrid implements DatagridInterface
         $this->bound = true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function addFilter(FilterInterface $filter)
     {
         $this->filters[$filter->getName()] = $filter;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function hasFilter($name)
     {
         return isset($this->filters[$name]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function removeFilter($name)
     {
         unset($this->filters[$name]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getFilter($name)
     {
         return $this->hasFilter($name) ? $this->filters[$name] : null;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getFilters()
     {
         return $this->filters;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function reorderFilters(array $keys)
     {
         $this->filters = array_merge(array_flip($keys), $this->filters);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getValues()
     {
         return $this->values;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setValue($name, $operator, $value)
     {
         $this->values[$name] = [
@@ -256,9 +223,6 @@ class Datagrid implements DatagridInterface
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function hasActiveFilters()
     {
         foreach ($this->filters as $name => $filter) {
@@ -270,9 +234,6 @@ class Datagrid implements DatagridInterface
         return false;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function hasDisplayableFilters()
     {
         foreach ($this->filters as $name => $filter) {
@@ -285,25 +246,16 @@ class Datagrid implements DatagridInterface
         return false;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getColumns()
     {
         return $this->columns;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getQuery()
     {
         return $this->query;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getForm()
     {
         $this->buildPager();

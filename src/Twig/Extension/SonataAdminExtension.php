@@ -19,6 +19,7 @@ use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Exception\NoValueException;
 use Symfony\Component\Translation\TranslatorInterface;
 use Twig\Environment;
+use Twig\Error\LoaderError;
 use Twig\Extension\AbstractExtension;
 use Twig\Template;
 use Twig\TwigFilter;
@@ -26,32 +27,28 @@ use Twig\TwigFilter;
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
-final class SonataAdminExtension extends AbstractExtension
+class SonataAdminExtension extends AbstractExtension
 {
-    /**
-     * @var TranslatorInterface|null
-     */
-    protected $translator;
     /**
      * @var Pool
      */
-    private $pool;
+    protected $pool;
 
     /**
      * @var LoggerInterface
      */
-    private $logger;
+    protected $logger;
+
+    /**
+     * @var TranslatorInterface|null
+     */
+    protected $translator;
 
     /**
      * @var string[]
      */
     private $xEditableTypeMapping = [];
 
-    /**
-     * @param Pool                $pool
-     * @param LoggerInterface     $logger
-     * @param TranslatorInterface $translator
-     */
     public function __construct(Pool $pool, LoggerInterface $logger = null, TranslatorInterface $translator = null)
     {
         // NEXT_MAJOR: make the translator parameter required
@@ -66,9 +63,6 @@ final class SonataAdminExtension extends AbstractExtension
         $this->translator = $translator;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getFilters()
     {
         return [
@@ -115,9 +109,6 @@ final class SonataAdminExtension extends AbstractExtension
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getName()
     {
         return 'sonata_admin';
@@ -126,9 +117,8 @@ final class SonataAdminExtension extends AbstractExtension
     /**
      * render a list element from the FieldDescription.
      *
-     * @param mixed                     $object
-     * @param FieldDescriptionInterface $fieldDescription
-     * @param array                     $params
+     * @param mixed $object
+     * @param array $params
      *
      * @return string
      */
@@ -153,10 +143,77 @@ final class SonataAdminExtension extends AbstractExtension
     }
 
     /**
+     * @return string
+     */
+    public function output(
+        FieldDescriptionInterface $fieldDescription,
+        Template $template,
+        array $parameters,
+        Environment $environment
+    ) {
+        $content = $template->render($parameters);
+
+        if ($environment->isDebug()) {
+            $commentTemplate = <<<'EOT'
+
+<!-- START
+    fieldName: %s
+    template: %s
+    compiled template: %s
+    -->
+    %s
+<!-- END - fieldName: %s -->
+EOT;
+
+            return sprintf(
+                $commentTemplate,
+                $fieldDescription->getFieldName(),
+                $fieldDescription->getTemplate(),
+                $template->getTemplateName(),
+                $content,
+                $fieldDescription->getFieldName()
+            );
+        }
+
+        return $content;
+    }
+
+    /**
+     * return the value related to FieldDescription, if the associated object does no
+     * exists => a temporary one is created.
+     *
+     * @param object $object
+     *
+     * @throws \RuntimeException
+     *
+     * @return mixed
+     */
+    public function getValueFromFieldDescription(
+        $object,
+        FieldDescriptionInterface $fieldDescription,
+        array $params = []
+    ) {
+        if (isset($params['loop']) && $object instanceof \ArrayAccess) {
+            throw new \RuntimeException('remove the loop requirement');
+        }
+
+        $value = null;
+
+        try {
+            $value = $fieldDescription->getValue($object);
+        } catch (NoValueException $e) {
+            if ($fieldDescription->getAssociationAdmin()) {
+                $value = $fieldDescription->getAssociationAdmin()->getNewInstance();
+            }
+        }
+
+        return $value;
+    }
+
+    /**
      * render a view element.
      *
-     * @param FieldDescriptionInterface $fieldDescription
-     * @param mixed                     $object
+     * @param mixed $object
      *
      * @return string
      */
@@ -167,7 +224,7 @@ final class SonataAdminExtension extends AbstractExtension
     ) {
         $template = $this->getTemplate(
             $fieldDescription,
-            'SonataAdminBundle:CRUD:base_show_field.html.twig',
+            '@SonataAdmin/CRUD/base_show_field.html.twig',
             $environment
         );
 
@@ -188,9 +245,8 @@ final class SonataAdminExtension extends AbstractExtension
     /**
      * render a compared view element.
      *
-     * @param FieldDescriptionInterface $fieldDescription
-     * @param mixed                     $baseObject
-     * @param mixed                     $compareObject
+     * @param mixed $baseObject
+     * @param mixed $compareObject
      *
      * @return string
      */
@@ -202,7 +258,7 @@ final class SonataAdminExtension extends AbstractExtension
     ) {
         $template = $this->getTemplate(
             $fieldDescription,
-            'SonataAdminBundle:CRUD:base_show_field.html.twig',
+            '@SonataAdmin/CRUD/base_show_field.html.twig',
             $environment
         );
 
@@ -243,8 +299,7 @@ final class SonataAdminExtension extends AbstractExtension
     }
 
     /**
-     * @param mixed                     $element
-     * @param FieldDescriptionInterface $fieldDescription
+     * @param mixed $element
      *
      * @throws \RuntimeException
      *
@@ -295,8 +350,7 @@ final class SonataAdminExtension extends AbstractExtension
     /**
      * Get the identifiers as a string that is safe to use in a url.
      *
-     * @param object         $model
-     * @param AdminInterface $admin
+     * @param object $model
      *
      * @return string string representation of the id that is safe to use in a url
      */
@@ -318,8 +372,6 @@ final class SonataAdminExtension extends AbstractExtension
     }
 
     /**
-     * @param $type
-     *
      * @return string|bool
      */
     public function getXEditableType($type)
@@ -333,8 +385,6 @@ final class SonataAdminExtension extends AbstractExtension
      *     ['Status1' => 'Alias1', 'Status2' => 'Alias2']
      * The method will return:
      *     [['value' => 'Status1', 'text' => 'Alias1'], ['value' => 'Status2', 'text' => 'Alias2']].
-     *
-     * @param FieldDescriptionInterface $fieldDescription
      *
      * @return array
      */
@@ -354,7 +404,7 @@ final class SonataAdminExtension extends AbstractExtension
                     if ($catalogue) {
                         if (null !== $this->translator) {
                             $text = $this->translator->trans($text, [], $catalogue);
-                            // NEXT_MAJOR: Remove this check
+                        // NEXT_MAJOR: Remove this check
                         } elseif (method_exists($fieldDescription->getAdmin(), 'trans')) {
                             $text = $fieldDescription->getAdmin()->trans($text, [], $catalogue);
                         }
@@ -372,94 +422,41 @@ final class SonataAdminExtension extends AbstractExtension
     }
 
     /**
-     * @param FieldDescriptionInterface $fieldDescription
-     * @param \Twig_Template            $template
-     * @param array                     $parameters
-     *
-     * @return string
-     */
-    private function output(
-        FieldDescriptionInterface $fieldDescription,
-        \Twig_Template $template,
-        array $parameters,
-        \Twig_Environment $environment
-    ) {
-        $content = $template->render($parameters);
-
-        if ($environment->isDebug()) {
-            $commentTemplate = <<<'EOT'
-
-<!-- START
-    fieldName: %s
-    template: %s
-    compiled template: %s
-    -->
-    %s
-<!-- END - fieldName: %s -->
-EOT;
-
-            return sprintf(
-                $commentTemplate,
-                $fieldDescription->getFieldName(),
-                $fieldDescription->getTemplate(),
-                $template->getTemplateName(),
-                $content,
-                $fieldDescription->getFieldName()
-            );
-        }
-
-        return $content;
-    }
-
-    /**
-     * return the value related to FieldDescription, if the associated object does no
-     * exists => a temporary one is created.
-     *
-     * @param object                    $object
-     * @param FieldDescriptionInterface $fieldDescription
-     * @param array                     $params
-     *
-     * @throws \RuntimeException
-     *
-     * @return mixed
-     */
-    private function getValueFromFieldDescription(
-        $object,
-        FieldDescriptionInterface $fieldDescription,
-        array $params = []
-    ) {
-        if (isset($params['loop']) && $object instanceof \ArrayAccess) {
-            throw new \RuntimeException('remove the loop requirement');
-        }
-
-        $value = null;
-
-        try {
-            $value = $fieldDescription->getValue($object);
-        } catch (NoValueException $e) {
-            if ($fieldDescription->getAssociationAdmin()) {
-                $value = $fieldDescription->getAssociationAdmin()->getNewInstance();
-            }
-        }
-
-        return $value;
-    }
-
-    /**
      * Get template.
      *
-     * @param FieldDescriptionInterface $fieldDescription
-     * @param string                    $defaultTemplate
+     * @param string $defaultTemplate
      *
      * @return \Twig_TemplateInterface
      */
-    private function getTemplate(
+    protected function getTemplate(
         FieldDescriptionInterface $fieldDescription,
         $defaultTemplate,
         Environment $environment
     ) {
         $templateName = $fieldDescription->getTemplate() ?: $defaultTemplate;
 
-        return $environment->loadTemplate($templateName);
+        try {
+            $template = $environment->loadTemplate($templateName);
+        } catch (LoaderError $e) {
+            @trigger_error(
+                'Relying on default template loading on field template loading exception '.
+                'is deprecated since 3.1 and will be removed in 4.0. '.
+                'A \Twig_Error_Loader exception will be thrown instead',
+                E_USER_DEPRECATED
+            );
+            $template = $environment->loadTemplate($defaultTemplate);
+
+            if (null !== $this->logger) {
+                $this->logger->warning(sprintf(
+                    'An error occured trying to load the template "%s" for the field "%s", '.
+                    'the default template "%s" was used instead.',
+                    $templateName,
+                    $fieldDescription->getFieldName(),
+                    $defaultTemplate
+                ), ['exception' => $e]);
+            }
+        }
+
+        return $template;
     }
 }

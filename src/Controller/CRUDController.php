@@ -76,11 +76,6 @@ class CRUDController implements ContainerAwareInterface
         throw new \LogicException('Call to undefined method '.__CLASS__.'::'.$method);
     }
 
-    /**
-     * Sets the Container associated with this Controller.
-     *
-     * @param ContainerInterface $container A ContainerInterface instance
-     */
     public function setContainer(ContainerInterface $container = null)
     {
         $this->container = $container;
@@ -93,9 +88,8 @@ class CRUDController implements ContainerAwareInterface
      *
      * @see renderWithExtraParams()
      *
-     * @param string   $view       The view name
-     * @param array    $parameters An array of parameters to pass to the view
-     * @param Response $response   A response instance
+     * @param string $view       The view name
+     * @param array  $parameters An array of parameters to pass to the view
      *
      * @return Response A Response instance
      *
@@ -114,9 +108,7 @@ class CRUDController implements ContainerAwareInterface
     /**
      * Renders a view while passing mandatory parameters on to the template.
      *
-     * @param string   $view       The view name
-     * @param array    $parameters An array of parameters to pass to the view
-     * @param Response $response   A response instance
+     * @param string $view The view name
      *
      * @return Response A Response instance
      */
@@ -180,8 +172,6 @@ class CRUDController implements ContainerAwareInterface
 
     /**
      * Execute a batch delete.
-     *
-     * @param ProxyQueryInterface $query
      *
      * @throws AccessDeniedException If access is not granted
      *
@@ -537,7 +527,7 @@ class CRUDController implements ContainerAwareInterface
 
         if ($class->isAbstract()) {
             return $this->renderWithExtraParams(
-                'SonataAdminBundle:CRUD:select_subclass.html.twig',
+                '@SonataAdmin/CRUD/select_subclass.html.twig',
                 [
                     'base_template' => $this->getBaseTemplate(),
                     'admin' => $this->admin,
@@ -851,8 +841,6 @@ class CRUDController implements ContainerAwareInterface
     /**
      * Export data to specified format.
      *
-     * @param Request $request
-     *
      * @throws AccessDeniedException If access is not granted
      * @throws \RuntimeException     If the export format is invalid
      *
@@ -1120,8 +1108,6 @@ class CRUDController implements ContainerAwareInterface
     }
 
     /**
-     * @param \Exception $e
-     *
      * @throws \Exception
      */
     protected function handleModelManagerException(\Exception $e)
@@ -1365,8 +1351,7 @@ class CRUDController implements ContainerAwareInterface
      * This method can be overloaded in your custom CRUD controller.
      * It's called from createAction.
      *
-     * @param Request $request
-     * @param mixed   $object
+     * @param mixed $object
      *
      * @return Response|null
      */
@@ -1378,8 +1363,7 @@ class CRUDController implements ContainerAwareInterface
      * This method can be overloaded in your custom CRUD controller.
      * It's called from editAction.
      *
-     * @param Request $request
-     * @param mixed   $object
+     * @param mixed $object
      *
      * @return Response|null
      */
@@ -1391,8 +1375,7 @@ class CRUDController implements ContainerAwareInterface
      * This method can be overloaded in your custom CRUD controller.
      * It's called from deleteAction.
      *
-     * @param Request $request
-     * @param mixed   $object
+     * @param mixed $object
      *
      * @return Response|null
      */
@@ -1404,8 +1387,7 @@ class CRUDController implements ContainerAwareInterface
      * This method can be overloaded in your custom CRUD controller.
      * It's called from showAction.
      *
-     * @param Request $request
-     * @param mixed   $object
+     * @param mixed $object
      *
      * @return Response|null
      */
@@ -1417,8 +1399,6 @@ class CRUDController implements ContainerAwareInterface
      * This method can be overloaded in your custom CRUD controller.
      * It's called from listAction.
      *
-     * @param Request $request
-     *
      * @return Response|null
      */
     protected function preList(Request $request)
@@ -1429,7 +1409,6 @@ class CRUDController implements ContainerAwareInterface
      * Translate a message id.
      *
      * @param string $id
-     * @param array  $parameters
      * @param string $domain
      * @param string $locale
      *
@@ -1445,8 +1424,7 @@ class CRUDController implements ContainerAwareInterface
     /**
      * Sets the admin form theme to form view. Used for compatibility between Symfony versions.
      *
-     * @param FormView $formView
-     * @param string   $theme
+     * @param string $theme
      */
     private function setFormTheme(FormView $formView, $theme)
     {
