@@ -67,7 +67,7 @@ class FormMapper extends BaseGroupedMapper
         }
 
         // "Dot" notation is not allowed as form name, but can be used as property path to access nested data.
-        if (!$name instanceof FormBuilderInterface && !isset($options['property_path'])) {
+        if (!$name instanceof FormBuilderInterface && strpos($fieldName, '.') !== false && !isset($options['property_path'])) {
             $options['property_path'] = $fieldName;
 
             // fix the form name
