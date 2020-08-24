@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -22,14 +24,14 @@ class ModelTypeTest extends TypeTestCase
 {
     protected $type;
 
-    public function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 
         $this->type = new ModelType(PropertyAccess::createPropertyAccessor());
     }
 
-    public function testGetDefaultOptions()
+    public function testGetDefaultOptions(): void
     {
         $modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
 
@@ -47,8 +49,8 @@ class ModelTypeTest extends TypeTestCase
         $this->assertNull($options['class']);
         $this->assertNull($options['property']);
         $this->assertNull($options['query']);
-        $this->assertSame(0, count($options['choices']));
-        $this->assertSame(0, count($options['preferred_choices']));
+        $this->assertCount(0, $options['choices']);
+        $this->assertCount(0, $options['preferred_choices']);
         $this->assertSame('link_add', $options['btn_add']);
         $this->assertSame('link_list', $options['btn_list']);
         $this->assertSame('link_delete', $options['btn_delete']);
@@ -59,7 +61,7 @@ class ModelTypeTest extends TypeTestCase
     /**
      * @dataProvider getCompoundOptionTests
      */
-    public function testCompoundOption($expectedCompound, $multiple, $expanded)
+    public function testCompoundOption(bool $expectedCompound, bool $multiple, bool $expanded): void
     {
         $modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
         $optionResolver = new OptionsResolver();
@@ -76,8 +78,8 @@ class ModelTypeTest extends TypeTestCase
         $this->assertNull($options['class']);
         $this->assertNull($options['property']);
         $this->assertNull($options['query']);
-        $this->assertSame(0, count($options['choices']));
-        $this->assertSame(0, count($options['preferred_choices']));
+        $this->assertCount(0, $options['choices']);
+        $this->assertCount(0, $options['preferred_choices']);
         $this->assertSame('link_add', $options['btn_add']);
         $this->assertSame('link_list', $options['btn_list']);
         $this->assertSame('link_delete', $options['btn_delete']);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -17,6 +19,7 @@ use Sonata\AdminBundle\Admin\BaseFieldDescription;
 use Sonata\AdminBundle\Builder\FormContractorInterface;
 use Sonata\AdminBundle\Form\FormMapper;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
+use Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface;
 use Sonata\AdminBundle\Tests\Fixtures\Admin\CleanAdmin;
 use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -24,9 +27,13 @@ use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormBuilder;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\ResolvedFormTypeInterface;
+use Symfony\Component\Validator\Mapping\MemberMetadata;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class FormMapperTest extends TestCase
 {
+    private const DEFAULT_GRANTED_ROLE = 'ROLE_ADMIN_BAZ';
+
     /**
      * @var FormContractorInterface
      */
@@ -47,28 +54,53 @@ class FormMapperTest extends TestCase
      */
     protected $formMapper;
 
-    public function setUp()
+    protected function setUp(): void
     {
-        $this->contractor = $this->getMockForAbstractClass(FormContractorInterface::class);
+        $this->contractor = $this->createMock(FormContractorInterface::class);
 
-        $formFactory = $this->getMockForAbstractClass(FormFactoryInterface::class);
-        $eventDispatcher = $this->getMockForAbstractClass(EventDispatcherInterface::class);
+        $formFactory = $this->createMock(FormFactoryInterface::class);
+        $eventDispatcher = $this->createMock(EventDispatcherInterface::class);
 
-        $formBuilder = new FormBuilder('test', 'stdClass', $eventDispatcher, $formFactory);
+        $formBuilder = new FormBuilder('test', \stdClass::class, $eventDispatcher, $formFactory);
+        $formBuilder2 = new FormBuilder('test', \stdClass::class, $eventDispatcher, $formFactory);
 
-        $this->admin = new CleanAdmin('code', 'class', 'controller');
+        $formFactory->method('createNamedBuilder')->willReturn($formBuilder);
+        $this->contractor->method('getFormBuilder')->willReturn($formBuilder2);
+
+        $this->admin = new CleanAdmin('code', \stdClass::class, 'controller');
+        $this->admin->setSubject(new \stdClass());
+
+        $validator = $this->createMock(ValidatorInterface::class);
+        $validator
+            ->method('getMetadataFor')
+            ->willReturn($this->createMock(MemberMetadata::class));
+        $this->admin->setValidator($validator);
+
+        // NEXT_MAJOR: Remove the calls to `setFormGroups()` and `setFormTabs()`
+        $this->admin->setFormGroups([]);
+        $this->admin->setFormTabs([]);
+
+        $securityHandler = $this->createMock(SecurityHandlerInterface::class);
+        $securityHandler
+            ->method('isGranted')
+            ->willReturnCallback(static function (AdminInterface $admin, string $attributes, $object = null): bool {
+                return self::DEFAULT_GRANTED_ROLE === $attributes;
+            });
+
+        $this->admin->setSecurityHandler($securityHandler);
+        $this->admin->setFormContractor($this->contractor);
 
         $this->modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
 
-        $this->modelManager->expects($this->any())
+        $this->modelManager
             ->method('getNewFieldDescriptionInstance')
-            ->will($this->returnCallback(function ($class, $name, array $options = []) {
+            ->willReturnCallback(function (string $class, string $name, array $options = []): BaseFieldDescription {
                 $fieldDescription = $this->getFieldDescriptionMock();
                 $fieldDescription->setName($name);
                 $fieldDescription->setOptions($options);
 
                 return $fieldDescription;
-            }));
+            });
 
         $this->admin->setModelManager($this->modelManager);
 
@@ -82,7 +114,7 @@ class FormMapperTest extends TestCase
         );
     }
 
-    public function testWithNoOptions()
+    public function testWithNoOptions(): void
     {
         $this->formMapper->with('foobar');
 
@@ -94,6 +126,8 @@ class FormMapperTest extends TestCase
             'translation_domain' => null,
             'name' => 'default',
             'box_class' => 'box box-primary',
+            'empty_message' => 'message_form_group_empty',
+            'empty_message_translation_domain' => 'SonataAdminBundle',
             'auto_created' => true,
             'groups' => ['foobar'],
             'tab' => true,
@@ -107,14 +141,17 @@ class FormMapperTest extends TestCase
             'translation_domain' => null,
             'name' => 'foobar',
             'box_class' => 'box box-primary',
+            'empty_message' => 'message_form_group_empty',
+            'empty_message_translation_domain' => 'SonataAdminBundle',
             'fields' => [],
         ]], $this->admin->getFormGroups());
     }
 
-    public function testWithOptions()
+    public function testWithOptions(): void
     {
         $this->formMapper->with('foobar', [
             'translation_domain' => 'Foobar',
+            'role' => self::DEFAULT_GRANTED_ROLE,
         ]);
 
         $this->assertSame(['foobar' => [
@@ -125,7 +162,10 @@ class FormMapperTest extends TestCase
             'translation_domain' => 'Foobar',
             'name' => 'foobar',
             'box_class' => 'box box-primary',
+            'empty_message' => 'message_form_group_empty',
+            'empty_message_translation_domain' => 'SonataAdminBundle',
             'fields' => [],
+            'role' => self::DEFAULT_GRANTED_ROLE,
         ]], $this->admin->getFormGroups());
 
         $this->assertSame(['default' => [
@@ -136,17 +176,19 @@ class FormMapperTest extends TestCase
             'translation_domain' => 'Foobar',
             'name' => 'default',
             'box_class' => 'box box-primary',
+            'empty_message' => 'message_form_group_empty',
+            'empty_message_translation_domain' => 'SonataAdminBundle',
             'auto_created' => true,
             'groups' => ['foobar'],
             'tab' => true,
         ]], $this->admin->getFormTabs());
     }
 
-    public function testWithFieldsCascadeTranslationDomain()
+    public function testWithFieldsCascadeTranslationDomain(): void
     {
         $this->contractor->expects($this->once())
             ->method('getDefaultOptions')
-            ->will($this->returnValue([]));
+            ->willReturn([]);
 
         $this->formMapper->with('foobar', [
                 'translation_domain' => 'Foobar',
@@ -169,6 +211,8 @@ class FormMapperTest extends TestCase
             'translation_domain' => 'Foobar',
             'name' => 'default',
             'box_class' => 'box box-primary',
+            'empty_message' => 'message_form_group_empty',
+            'empty_message_translation_domain' => 'SonataAdminBundle',
             'auto_created' => true,
             'groups' => ['foobar'],
             'tab' => true,
@@ -182,23 +226,28 @@ class FormMapperTest extends TestCase
             'translation_domain' => 'Foobar',
             'name' => 'foobar',
             'box_class' => 'box box-primary',
+            'empty_message' => 'message_form_group_empty',
+            'empty_message_translation_domain' => 'SonataAdminBundle',
             'fields' => [
                 'foo' => 'foo',
             ],
         ]], $this->admin->getFormGroups());
     }
 
-    public function testRemoveCascadeRemoveFieldFromFormGroup()
+    /**
+     * @doesNotPerformAssertions
+     */
+    public function testRemoveCascadeRemoveFieldFromFormGroup(): void
     {
         $this->formMapper->with('foo');
         $this->formMapper->remove('foo');
     }
 
-    public function testIfTrueApply()
+    public function testIfTrueApply(): void
     {
         $this->contractor->expects($this->once())
             ->method('getDefaultOptions')
-            ->will($this->returnValue([]));
+            ->willReturn([]);
 
         $this->formMapper
             ->ifTrue(true)
@@ -209,7 +258,7 @@ class FormMapperTest extends TestCase
         $this->assertTrue($this->formMapper->has('foo'));
     }
 
-    public function testIfTrueNotApply()
+    public function testIfTrueNotApply(): void
     {
         $this->formMapper
             ->ifTrue(false)
@@ -220,11 +269,11 @@ class FormMapperTest extends TestCase
         $this->assertFalse($this->formMapper->has('foo'));
     }
 
-    public function testIfTrueCombination()
+    public function testIfTrueCombination(): void
     {
         $this->contractor->expects($this->once())
             ->method('getDefaultOptions')
-            ->will($this->returnValue([]));
+            ->willReturn([]);
 
         $this->formMapper
             ->ifTrue(false)
@@ -237,11 +286,11 @@ class FormMapperTest extends TestCase
         $this->assertTrue($this->formMapper->has('baz'));
     }
 
-    public function testIfFalseApply()
+    public function testIfFalseApply(): void
     {
         $this->contractor->expects($this->once())
             ->method('getDefaultOptions')
-            ->will($this->returnValue([]));
+            ->willReturn([]);
 
         $this->formMapper
             ->ifFalse(false)
@@ -252,7 +301,7 @@ class FormMapperTest extends TestCase
         $this->assertTrue($this->formMapper->has('foo'));
     }
 
-    public function testIfFalseNotApply()
+    public function testIfFalseNotApply(): void
     {
         $this->formMapper
             ->ifFalse(true)
@@ -263,11 +312,11 @@ class FormMapperTest extends TestCase
         $this->assertFalse($this->formMapper->has('foo'));
     }
 
-    public function testIfFalseCombination()
+    public function testIfFalseCombination(): void
     {
         $this->contractor->expects($this->once())
             ->method('getDefaultOptions')
-            ->will($this->returnValue([]));
+            ->willReturn([]);
 
         $this->formMapper
             ->ifFalse(true)
@@ -280,70 +329,94 @@ class FormMapperTest extends TestCase
         $this->assertTrue($this->formMapper->has('baz'));
     }
 
-    public function testIfTrueNested()
+    public function testIfTrueNested(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Cannot nest ifTrue or ifFalse call');
+        $this->formMapper
+            ->ifTrue(true)
+                ->ifTrue(true)
+                    ->add('fooName')
+                ->ifEnd()
+            ->ifEnd()
+        ;
 
-        $this->formMapper->ifTrue(true);
-        $this->formMapper->ifTrue(true);
+        $this->assertTrue($this->formMapper->has('fooName'));
     }
 
-    public function testIfFalseNested()
+    public function testIfFalseNested(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Cannot nest ifTrue or ifFalse call');
+        $this->formMapper
+            ->ifFalse(false)
+                ->ifFalse(false)
+                    ->add('fooName')
+                ->ifEnd()
+            ->ifEnd()
+        ;
 
-        $this->formMapper->ifFalse(false);
-        $this->formMapper->ifFalse(false);
+        $this->assertTrue($this->formMapper->has('fooName'));
     }
 
-    public function testIfCombinationNested()
+    public function testIfCombinationNested(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Cannot nest ifTrue or ifFalse call');
+        $this->formMapper
+            ->ifTrue(true)
+                ->ifFalse(false)
+                    ->add('fooName')
+                ->ifEnd()
+            ->ifEnd()
+        ;
 
-        $this->formMapper->ifTrue(true);
-        $this->formMapper->ifFalse(false);
+        $this->assertTrue($this->formMapper->has('fooName'));
     }
 
-    public function testIfFalseCombinationNested2()
+    public function testIfFalseCombinationNested2(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Cannot nest ifTrue or ifFalse call');
+        $this->formMapper
+            ->ifFalse(false)
+                ->ifTrue(true)
+                    ->add('fooName')
+                ->ifEnd()
+            ->ifEnd()
+        ;
 
-        $this->formMapper->ifFalse(false);
-        $this->formMapper->ifTrue(true);
+        $this->assertTrue($this->formMapper->has('fooName'));
     }
 
-    public function testIfFalseCombinationNested3()
+    public function testIfFalseCombinationNested3(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Cannot nest ifTrue or ifFalse call');
+        $this->formMapper
+            ->ifFalse(true)
+                ->ifTrue(false)
+                    ->add('fooName')
+                ->ifEnd()
+            ->ifEnd()
+        ;
 
-        $this->formMapper->ifFalse(true);
-        $this->formMapper->ifTrue(false);
+        $this->assertFalse($this->formMapper->has('fooName'));
     }
 
-    public function testIfFalseCombinationNested4()
+    public function testIfFalseCombinationNested4(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Cannot nest ifTrue or ifFalse call');
+        $this->formMapper
+            ->ifTrue(false)
+                ->ifFalse(true)
+                    ->add('fooName')
+                ->ifEnd()
+            ->ifEnd()
+        ;
 
-        $this->formMapper->ifTrue(false);
-        $this->formMapper->ifFalse(true);
+        $this->assertFalse($this->formMapper->has('fooName'));
     }
 
-    public function testAddAcceptFormBuilder()
+    public function testAddAcceptFormBuilder(): void
     {
         $formBuilder = $this
             ->getMockBuilder(FormBuilder::class)
             ->disableOriginalConstructor()
             ->getMock();
 
-        $formBuilder->expects($this->any())
+        $formBuilder
             ->method('getName')
-            ->will($this->returnValue('foo'));
+            ->willReturn('foo');
 
         $formType = $this
             ->getMockBuilder(ResolvedFormTypeInterface::class)
@@ -355,26 +428,26 @@ class FormMapperTest extends TestCase
 
         $formType->expects($this->once())
             ->method('getInnerType')
-            ->will($this->returnValue($innerType));
+            ->willReturn($innerType);
 
         $formBuilder->expects($this->once())
             ->method('getType')
-            ->will($this->returnValue($formType));
+            ->willReturn($formType);
 
         $this->formMapper->add($formBuilder);
         $this->assertSame($this->formMapper->get('foo'), $formBuilder);
     }
 
-    public function testAddFormBuilderWithType()
+    public function testAddFormBuilderWithType(): void
     {
         $formBuilder = $this
             ->getMockBuilder(FormBuilder::class)
             ->disableOriginalConstructor()
             ->getMock();
 
-        $formBuilder->expects($this->any())
+        $formBuilder
             ->method('getName')
-            ->will($this->returnValue('foo'));
+            ->willReturn('foo');
 
         $formBuilder->expects($this->never())
             ->method('getType');
@@ -383,7 +456,7 @@ class FormMapperTest extends TestCase
         $this->assertSame($this->formMapper->get('foo'), $formBuilder);
     }
 
-    public function testGroupRemovingWithoutTab()
+    public function testGroupRemovingWithoutTab(): void
     {
         $this->formMapper->with('foobar');
 
@@ -392,7 +465,7 @@ class FormMapperTest extends TestCase
         $this->assertSame([], $this->admin->getFormGroups());
     }
 
-    public function testGroupRemovingWithTab()
+    public function testGroupRemovingWithTab(): void
     {
         $this->formMapper->tab('mytab')->with('foobar');
 
@@ -401,7 +474,7 @@ class FormMapperTest extends TestCase
         $this->assertSame([], $this->admin->getFormGroups());
     }
 
-    public function testGroupRemovingWithoutTabAndWithTabRemoving()
+    public function testGroupRemovingWithoutTabAndWithTabRemoving(): void
     {
         $this->formMapper->with('foobar');
 
@@ -411,7 +484,7 @@ class FormMapperTest extends TestCase
         $this->assertSame([], $this->admin->getFormTabs());
     }
 
-    public function testGroupRemovingWithTabAndWithTabRemoving()
+    public function testGroupRemovingWithTabAndWithTabRemoving(): void
     {
         $this->formMapper->tab('mytab')->with('foobar');
 
@@ -421,11 +494,11 @@ class FormMapperTest extends TestCase
         $this->assertSame([], $this->admin->getFormTabs());
     }
 
-    public function testKeys()
+    public function testKeys(): void
     {
-        $this->contractor->expects($this->any())
+        $this->contractor
             ->method('getDefaultOptions')
-            ->will($this->returnValue([]));
+            ->willReturn([]);
 
         $this->formMapper
             ->add('foo', 'bar')
@@ -435,11 +508,11 @@ class FormMapperTest extends TestCase
         $this->assertSame(['foo', 'baz'], $this->formMapper->keys());
     }
 
-    public function testFieldNameIsSanitized()
+    public function testFieldNameIsSanitized(): void
     {
-        $this->contractor->expects($this->any())
+        $this->contractor
             ->method('getDefaultOptions')
-            ->will($this->returnValue([]));
+            ->willReturn([]);
 
         $this->formMapper
             ->add('fo.o', 'bar')
@@ -449,8 +522,35 @@ class FormMapperTest extends TestCase
         $this->assertSame(['fo__o', 'ba____z'], $this->formMapper->keys());
     }
 
-    private function getFieldDescriptionMock($name = null, $label = null, $translationDomain = null)
+    public function testAddOptionRole(): void
     {
+        $this->formMapper->add('bar', 'bar');
+
+        $this->assertTrue($this->formMapper->has('bar'));
+
+        $this->formMapper->add('quux', 'bar', [], ['role' => 'ROLE_QUX']);
+
+        $this->assertTrue($this->formMapper->has('bar'));
+        $this->assertFalse($this->formMapper->has('quux'));
+
+        $this->formMapper
+            ->with('qux')
+                ->add('foobar', 'bar', [], ['role' => self::DEFAULT_GRANTED_ROLE])
+                ->add('foo', 'bar', [], ['role' => 'ROLE_QUX'])
+                ->add('baz', 'bar')
+            ->end();
+
+        $this->assertArrayHasKey('qux', $this->admin->getFormGroups());
+        $this->assertTrue($this->formMapper->has('foobar'));
+        $this->assertFalse($this->formMapper->has('foo'));
+        $this->assertTrue($this->formMapper->has('baz'));
+    }
+
+    private function getFieldDescriptionMock(
+        ?string $name = null,
+        ?string $label = null,
+        ?string $translationDomain = null
+    ): BaseFieldDescription {
         $fieldDescription = $this->getMockForAbstractClass(BaseFieldDescription::class);
 
         if (null !== $name) {

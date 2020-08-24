@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -13,6 +15,12 @@ namespace Sonata\AdminBundle\Datagrid;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * NEXT_MAJOR: Remove these comments and uncomment corresponding methods.
+ *
+ * @method int  getPage()
+ * @method bool isLastPage()
+ * @method int  getNbResults()
  */
 interface PagerInterface
 {
@@ -69,4 +77,18 @@ interface PagerInterface
      * @return int
      */
     public function getMaxPageLinks();
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    /**
+//     * Returns true if on the last page.
+//     *
+//     * @return bool
+//     */
+//    public function isLastPage(): bool;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    public function getNbResults(): int;
+//
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    public function getPage(): int;
 }

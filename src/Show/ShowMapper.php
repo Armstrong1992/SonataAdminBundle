@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -20,11 +22,18 @@ use Sonata\AdminBundle\Mapper\BaseGroupedMapper;
 /**
  * This class is used to simulate the Form API.
  *
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class ShowMapper extends BaseGroupedMapper
 {
     protected $list;
+
+    /**
+     * @var ShowBuilderInterface
+     */
+    protected $builder;
 
     public function __construct(
         ShowBuilderInterface $showBuilder,
@@ -36,16 +45,16 @@ class ShowMapper extends BaseGroupedMapper
     }
 
     /**
-     * @param mixed $name
-     * @param mixed $type
+     * @param FieldDescriptionInterface|string $name
+     * @param string|null                      $type
      *
-     * @throws \RuntimeException
+     * @throws \LogicException
      *
      * @return $this
      */
     public function add($name, $type = null, array $fieldDescriptionOptions = [])
     {
-        if (null !== $this->apply && !$this->apply) {
+        if (!$this->shouldApply()) {
             return $this;
         }
 
@@ -56,7 +65,7 @@ class ShowMapper extends BaseGroupedMapper
         if ($name instanceof FieldDescriptionInterface) {
             $fieldDescription = $name;
             $fieldDescription->mergeOptions($fieldDescriptionOptions);
-        } elseif (is_string($name)) {
+        } elseif (\is_string($name)) {
             if (!$this->admin->hasShowFieldDescription($name)) {
                 $fieldDescription = $this->admin->getModelManager()->getNewFieldDescriptionInstance(
                     $this->admin->getClass(),
@@ -64,20 +73,29 @@ class ShowMapper extends BaseGroupedMapper
                     $fieldDescriptionOptions
                 );
             } else {
-                throw new \RuntimeException(sprintf('Duplicate field name "%s" in show mapper. Names should be unique.', $name));
+                throw new \LogicException(sprintf(
+                    'Duplicate field name "%s" in show mapper. Names should be unique.',
+                    $name
+                ));
             }
         } else {
-            throw new \RuntimeException('invalid state');
+            throw new \TypeError(
+                'Unknown field name in show mapper.'
+                .' Field name should be either of FieldDescriptionInterface interface or string.'
+            );
         }
 
-        if (!$fieldDescription->getLabel() && false !== $fieldDescription->getOption('label')) {
+        // NEXT_MAJOR: Remove the argument "sonata_deprecation_mute" in the following call.
+        if (null === $fieldDescription->getLabel('sonata_deprecation_mute')) {
             $fieldDescription->setOption('label', $this->admin->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(), 'show', 'label'));
         }
 
         $fieldDescription->setOption('safe', $fieldDescription->getOption('safe', false));
 
-        // add the field with the FormBuilder
-        $this->builder->addField($this->list, $type, $fieldDescription, $this->admin);
+        if (!isset($fieldDescriptionOptions['role']) || $this->admin->isGranted($fieldDescriptionOptions['role'])) {
+            // add the field with the FormBuilder
+            $this->builder->addField($this->list, $type, $fieldDescription, $this->admin);
+        }
 
         return $this;
     }
@@ -116,7 +134,7 @@ class ShowMapper extends BaseGroupedMapper
 
         // When the default tab is used, the tabname is not prepended to the index in the group array
         if ('default' !== $tab) {
-            $group = $tab.'.'.$group;
+            $group = sprintf('%s.%s', $tab, $group);
         }
 
         if (isset($groups[$group])) {
@@ -127,12 +145,12 @@ class ShowMapper extends BaseGroupedMapper
         unset($groups[$group]);
 
         $tabs = $this->getTabs();
-        $key = array_search($group, $tabs[$tab]['groups']);
+        $key = array_search($group, $tabs[$tab]['groups'], true);
 
         if (false !== $key) {
             unset($tabs[$tab]['groups'][$key]);
         }
-        if ($deleteEmptyTab && 0 == count($tabs[$tab]['groups'])) {
+        if ($deleteEmptyTab && 0 === \count($tabs[$tab]['groups'])) {
             unset($tabs[$tab]);
         }
 
@@ -156,7 +174,9 @@ class ShowMapper extends BaseGroupedMapper
 
     protected function getGroups()
     {
-        return $this->admin->getShowGroups();
+        // NEXT_MAJOR: Remove the argument "sonata_deprecation_mute" in the following call.
+
+        return $this->admin->getShowGroups('sonata_deprecation_mute');
     }
 
     protected function setGroups(array $groups)
@@ -166,7 +186,9 @@ class ShowMapper extends BaseGroupedMapper
 
     protected function getTabs()
     {
-        return $this->admin->getShowTabs();
+        // NEXT_MAJOR: Remove the argument "sonata_deprecation_mute" in the following call.
+
+        return $this->admin->getShowTabs('sonata_deprecation_mute');
     }
 
     protected function setTabs(array $tabs)

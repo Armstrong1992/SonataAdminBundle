@@ -1,64 +1,58 @@
 Create child admins
 -------------------
 
-Let us say you have a ``PlaylistAdmin`` and a ``VideoAdmin``. You can optionally declare the ``VideoAdmin``
-to be a child of the ``PlaylistAdmin``. This will create new routes like, for example, ``/playlist/{id}/video/list``,
+Let us say you have a ``PlaylistAdmin`` and a ``VideoAdmin``. You can
+optionally declare the ``VideoAdmin`` to be a child of the ``PlaylistAdmin``.
+This will create new routes like, for example, ``/playlist/{id}/video/list``,
 where the videos will automatically be filtered by post.
 
-To do this, you first need to call the ``addChild`` method in your ``PlaylistAdmin`` service configuration:
+To do this, you first need to call the ``addChild`` method in your ``PlaylistAdmin``
+service configuration with two arguments, the child admin name (in this case
+``VideoAdmin`` service) and the Entity field that relates our child Entity with
+its parent:
 
 .. configuration-block::
 
+    .. code-block:: yaml
+
+        # config/services.yaml
+
+        App\Admin\VideoAdmin:
+            # tags, calls, etc
+
+        App\Admin\PlaylistAdmin:
+            calls:
+                - [addChild, ['@App\Admin\VideoAdmin', 'playlist']]
+
     .. code-block:: xml
 
-        <!-- app/config/config.xml -->
-        <service id="sonata.admin.playlist" class="AppBundle\Admin\PlaylistAdmin">
+        <!-- config/services.xml -->
+
+        <service id="App\Admin\VideoAdmin">
+            <!-- tags, calls, etc -->
+        </service>
+
+        <service id="App\Admin\PlaylistAdmin">
             <!-- ... -->
 
             <call method="addChild">
-                <argument type="service" id="sonata.admin.video" />
+                <argument type="service" id="App\Admin\VideoAdmin"/>
+                <argument>playlist</argument>
             </call>
         </service>
 
-Then, you have to set the VideoAdmin ``parentAssociationMapping`` attribute to ``playlist`` :
+To display the ``VideoAdmin`` extend the menu in your ``PlaylistAdmin``
+class::
 
-.. code-block:: php
-
-    <?php
-
-    namespace AppBundle\Admin;
-
-    // ...
-
-    class VideoAdmin extends AbstractAdmin
-    {
-        protected $parentAssociationMapping = 'playlist';
-
-        // OR
-
-        public function getParentAssociationMapping()
-        {
-            return 'playlist';
-        }
-    }
-
-To display the ``VideoAdmin`` extend the menu in your ``PlaylistAdmin`` class:
-
-.. code-block:: php
-
-    <?php
-
-    namespace AppBundle\Admin;
+    namespace App\Admin;
 
     use Knp\Menu\ItemInterface as MenuItemInterface;
     use Sonata\AdminBundle\Admin\AbstractAdmin;
     use Sonata\AdminBundle\Admin\AdminInterface;
 
-    class PlaylistAdmin extends AbstractAdmin
+    final class PlaylistAdmin extends AbstractAdmin
     {
-        // ...
-
-        protected function configureSideMenu(MenuItemInterface $menu, $action, AdminInterface $childAdmin = null)
+        protected function configureTabMenu(MenuItemInterface $menu, $action, AdminInterface $childAdmin = null)
         {
             if (!$childAdmin && !in_array($action, ['edit', 'show'])) {
                 return;
@@ -67,48 +61,35 @@ To display the ``VideoAdmin`` extend the menu in your ``PlaylistAdmin`` class:
             $admin = $this->isChild() ? $this->getParent() : $this;
             $id = $admin->getRequest()->get('id');
 
-            $menu->addChild('View Playlist', [
-                'uri' => $admin->generateUrl('show', ['id' => $id])
-            ]);
+            $menu->addChild('View Playlist', $admin->generateMenuUrl('show', ['id' => $id]));
 
             if ($this->isGranted('EDIT')) {
-                $menu->addChild('Edit Playlist', [
-                    'uri' => $admin->generateUrl('edit', ['id' => $id])
-                ]);
+                $menu->addChild('Edit Playlist', $admin->generateMenuUrl('edit', ['id' => $id]));
             }
 
             if ($this->isGranted('LIST')) {
-                $menu->addChild('Manage Videos', [
-                    'uri' => $admin->generateUrl('sonata.admin.video.list', ['id' => $id])
-                ]);
+                $menu->addChild('Manage Videos', $admin->generateMenuUrl('App\Admin\VideoAdmin.list', ['id' => $id]));
             }
         }
     }
 
-It also possible to set a dot-separated value, like ``post.author``, if your parent and child admins are not directly related.
+It also possible to set a dot-separated value, like ``post.author``,
+if your parent and child admins are not directly related.
 
-Be wary that being a child admin is optional, which means that regular routes
-will be created regardless of whether you actually need them or not. To get rid
-of them, you may override the ``configureRoutes`` method::
+Be wary that being a child admin is optional, which means that regular
+routes will be created regardless of whether you actually need them
+or not. To get rid of them, you may override the ``configureRoutes`` method::
 
-    <?php
-
-    namespace AppBundle\Admin;
+    namespace App\Admin;
 
     use Sonata\AdminBundle\Admin\AbstractAdmin;
     use Sonata\AdminBundle\Route\RouteCollection;
 
-    class VideoAdmin extends AbstractAdmin
+    final class VideoAdmin extends AbstractAdmin
     {
-        protected $parentAssociationMapping = 'playlist';
-
         protected function configureRoutes(RouteCollection $collection)
         {
             if ($this->isChild()) {
-
-                // This is the route configuration as a child
-                $collection->clearExcept(['show', 'edit']);
-
                 return;
             }
 

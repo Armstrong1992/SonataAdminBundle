@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -13,7 +15,7 @@ namespace Sonata\AdminBundle\Form\ChoiceList;
 
 use Doctrine\Common\Util\ClassUtils;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
-use Sonata\CoreBundle\Model\Adapter\AdapterInterface;
+use Sonata\Doctrine\Adapter\AdapterInterface;
 use Symfony\Component\Form\ChoiceList\ArrayChoiceList;
 use Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface;
 use Symfony\Component\Form\Exception\RuntimeException;
@@ -22,6 +24,8 @@ use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Symfony\Component\PropertyAccess\PropertyPath;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class ModelChoiceLoader implements ChoiceLoaderInterface
@@ -45,7 +49,7 @@ class ModelChoiceLoader implements ChoiceLoaderInterface
     private $choices;
 
     /**
-     * @var PropertyPath
+     * @var PropertyPath|null
      */
     private $propertyPath;
 
@@ -68,7 +72,7 @@ class ModelChoiceLoader implements ChoiceLoaderInterface
         $property = null,
         $query = null,
         $choices = [],
-        PropertyAccessorInterface $propertyAccessor = null
+        ?PropertyAccessorInterface $propertyAccessor = null
     ) {
         $this->modelManager = $modelManager;
         $this->class = $class;
@@ -91,29 +95,33 @@ class ModelChoiceLoader implements ChoiceLoaderInterface
         if (!$this->choiceList) {
             if ($this->query) {
                 $entities = $this->modelManager->executeQuery($this->query);
-            } elseif (is_array($this->choices) && count($this->choices) > 0) {
+            } elseif (\is_array($this->choices) && \count($this->choices) > 0) {
                 $entities = $this->choices;
             } else {
                 $entities = $this->modelManager->findBy($this->class);
             }
 
             $choices = [];
-            foreach ($entities as $key => $entity) {
+            foreach ($entities as $model) {
                 if ($this->propertyPath) {
                     // If the property option was given, use it
-                    $valueObject = $this->propertyAccessor->getValue($entity, $this->propertyPath);
+                    $valueObject = $this->propertyAccessor->getValue($model, $this->propertyPath);
                 } else {
                     // Otherwise expect a __toString() method in the entity
                     try {
-                        $valueObject = (string) $entity;
+                        $valueObject = (string) $model;
                     } catch (\Exception $e) {
-                        throw new RuntimeException(sprintf('Unable to convert the entity "%s" to string, provide "property" option or implement "__toString()" method in your entity.', ClassUtils::getClass($entity)), 0, $e);
+                        throw new RuntimeException(sprintf(
+                            'Unable to convert the entity "%s" to string, provide "property" option'
+                            .' or implement "__toString()" method in your entity.',
+                            ClassUtils::getClass($model)
+                        ), 0, $e);
                     }
                 }
 
-                $id = implode(AdapterInterface::ID_SEPARATOR, $this->getIdentifierValues($entity));
+                $id = implode(AdapterInterface::ID_SEPARATOR, $this->getIdentifierValues($model));
 
-                if (!array_key_exists($valueObject, $choices)) {
+                if (!\array_key_exists($valueObject, $choices)) {
                     $choices[$valueObject] = [];
                 }
 
@@ -122,7 +130,7 @@ class ModelChoiceLoader implements ChoiceLoaderInterface
 
             $finalChoices = [];
             foreach ($choices as $valueObject => $idx) {
-                if (count($idx) > 1) { // avoid issue with identical values ...
+                if (\count($idx) > 1) { // avoid issue with identical values ...
                     foreach ($idx as $id) {
                         $finalChoices[sprintf('%s (id: %s)', $valueObject, $id)] = $id;
                     }
@@ -148,16 +156,17 @@ class ModelChoiceLoader implements ChoiceLoaderInterface
     }
 
     /**
-     * @param object $entity
-     *
-     * @return array
+     * @param object $model
      */
-    private function getIdentifierValues($entity)
+    private function getIdentifierValues($model): array
     {
         try {
-            return $this->modelManager->getIdentifierValues($entity);
+            return $this->modelManager->getIdentifierValues($model);
         } catch (\Exception $e) {
-            throw new \InvalidArgumentException(sprintf('Unable to retrieve the identifier values for entity %s', ClassUtils::getClass($entity)), 0, $e);
+            throw new \InvalidArgumentException(sprintf(
+                'Unable to retrieve the identifier values for entity %s',
+                ClassUtils::getClass($model)
+            ), 0, $e);
         }
     }
 }

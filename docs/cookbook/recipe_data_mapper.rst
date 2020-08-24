@@ -23,11 +23,9 @@ Example Entity
 
 .. code-block:: php
 
-    <?php
+    // src/Entity/Example.php
 
-    // src/AppBundle/Entity/Example.php
-
-    namespace AppBundle\Entity;
+    namespace App\Entity;
 
     class Example
     {
@@ -52,18 +50,14 @@ Example Entity
 DataMapper
 ^^^^^^^^^^
 
-To be able to set entity data without the possibility to use setters a ``DataMapper`` should be created.
+To be able to set entity data without the possibility to use setters a ``DataMapper`` should be created::
 
-.. code-block:: php
+    // src/Form/DataMapper/ExampleDataMapper.php
 
-    <?php
-
-    // src/AppBundle/Form/DataMapper/ExampleDataMapper.php
-
-    namespace AppBundle\Form\DataMapper;
+    namespace App\Form\DataMapper;
 
     use Symfony\Component\Form\DataMapperInterface;
-    use AppBundle\Entity\Example;
+    use App\Entity\Example;
 
     class ExampleDataMapper implements DataMapperInterface
     {
@@ -108,21 +102,17 @@ To be able to set entity data without the possibility to use setters a ``DataMap
 Admin class
 ^^^^^^^^^^^
 
-Now we need to configure the form to use our ``ExampleDataMapper``.
+Now we need to configure the form to use our ``ExampleDataMapper``::
 
-.. code-block:: php
+    // src/Admin/ExampleAdmin.php
 
-    <?php
-
-    // src/AppBundle/Admin/ExampleAdmin.php
-
-    namespace AppBundle\Admin;
+    namespace App\Admin;
 
     use Sonata\AdminBundle\Admin\AbstractAdmin;
     use Sonata\AdminBundle\Form\FormMapper;
-    use AppBundle\Form\DataMapper\ExampleDataMapper;
+    use App\Form\DataMapper\ExampleDataMapper;
 
-    class ExampleAdmin extends AbstractAdmin
+    final class ExampleAdmin extends AbstractAdmin
     {
         protected function configureFormFields(FormMapper $formMapper)
         {

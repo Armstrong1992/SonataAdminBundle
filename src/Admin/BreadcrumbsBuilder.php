@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -37,14 +39,14 @@ final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
         $this->config = $resolver->resolve($config);
     }
 
-    public function configureOptions(OptionsResolver $resolver)
+    public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
             'child_admin_route' => 'edit',
         ]);
     }
 
-    public function getBreadcrumbs(AdminInterface $admin, $action)
+    public function getBreadcrumbs(AdminInterface $admin, $action): array
     {
         $breadcrumbs = [];
         if ($admin->isChild()) {
@@ -64,16 +66,14 @@ final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
     }
 
     /**
-     * Builds breadcrumbs for $action, starting from $menu.
-     *
-     * Note: the method will be called by the top admin instance (parent => child)
-     *
-     * @param AdminInterface     $admin
-     * @param string             $action
-     * @param ItemInterface|null $menu
+     * {@inheritdoc}
+     * NEXT_MAJOR : make this method private.
      */
-    private function buildBreadcrumbs(AdminInterface $admin, $action, ItemInterface $menu = null)
-    {
+    public function buildBreadcrumbs(
+        AdminInterface $admin,
+        $action,
+        ?ItemInterface $menu = null
+    ): ItemInterface {
         if (!$menu) {
             $menu = $admin->getMenuFactory()->createItem('root');
 
@@ -100,7 +100,7 @@ final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
 
         $childAdmin = $admin->getCurrentChildAdmin();
 
-        if ($childAdmin) {
+        if ($childAdmin && $admin->hasSubject()) {
             $id = $admin->getRequest()->get($admin->getIdParameter());
 
             $menu = $menu->addChild(
@@ -121,23 +121,24 @@ final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
         }
 
         if ('list' === $action) {
-            $menu->setUri(false);
-        } elseif ('create' !== $action && $admin->hasSubject()) {
-            $menu = $menu->addChild($admin->toString($admin->getSubject()), [
+            $menu->setUri(null);
+
+            return $menu;
+        }
+        if ('create' !== $action && $admin->hasSubject()) {
+            return $menu->addChild($admin->toString($admin->getSubject()), [
                 'extras' => [
                     'translation_domain' => false,
                 ],
             ]);
-        } else {
-            $menu = $this->createMenuItem(
-                $admin,
-                $menu,
-                sprintf('%s_%s', $admin->getClassnameLabel(), $action),
-                $admin->getTranslationDomain()
-            );
         }
 
-        return $menu;
+        return $this->createMenuItem(
+            $admin,
+            $menu,
+            sprintf('%s_%s', $admin->getClassnameLabel(), $action),
+            $admin->getTranslationDomain()
+        );
     }
 
     /**
@@ -149,16 +150,14 @@ final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
      * @param string         $name              the source of the final label
      * @param string         $translationDomain for label translation
      * @param array          $options           menu item options
-     *
-     * @return ItemInterface
      */
     private function createMenuItem(
         AdminInterface $admin,
         ItemInterface $menu,
-        $name,
-        $translationDomain = null,
-        $options = []
-    ) {
+        string $name,
+        ?string $translationDomain = null,
+        array $options = []
+    ): ItemInterface {
         $options = array_merge([
             'extras' => [
                 'translation_domain' => $translationDomain,

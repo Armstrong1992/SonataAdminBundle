@@ -1,22 +1,23 @@
 Extensions
 ==========
 
-Admin extensions allow you to add or change features of one or more Admin instances. To create an extension your class
-must implement the interface ``Sonata\AdminBundle\Admin\AdminExtensionInterface`` and be registered as a service. The
-interface defines a number of functions which you can use to customize the edit form, list view, form validation,
-alter newly created objects and other admin features.
-
-.. code-block:: php
+Admin extensions allow you to add or change features of one or more Admin
+instances. To create an extension your class
+must implement the interface ``Sonata\AdminBundle\Admin\AdminExtensionInterface``
+and be registered as a service. The interface defines a number of functions which
+you can use to customize the edit form, list view, form validation, alter newly
+created objects and other admin features::
 
     use Sonata\AdminBundle\Admin\AbstractAdminExtension;
     use Sonata\AdminBundle\Form\FormMapper;
+    use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 
-    class PublishStatusAdminExtension extends AbstractAdminExtension
+    final class PublishStatusAdminExtension extends AbstractAdminExtension
     {
-        public function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $formMapper)
         {
             $formMapper
-                ->add('status', 'choice', [
+                ->add('status', ChoiceType::class, [
                     'choices' => [
                         'draft' => 'Draft',
                         'published' => 'Published',
@@ -42,30 +43,32 @@ The higher the priority, the earlier it's executed.
 
     .. code-block:: yaml
 
+        # config/services.yaml
+
         services:
             app.publish.extension:
-                class: AppBundle\Admin\Extension\PublishStatusAdminExtension
+                class: App\Admin\Extension\PublishStatusAdminExtension
                 tags:
                     - { name: sonata.admin.extension, target: app.admin.article }
                     - { name: sonata.admin.extension, target: app.admin.blog }
 
             app.order.extension:
-                class: AppBundle\Admin\Extension\OrderAdminExtension
+                class: App\Admin\Extension\OrderAdminExtension
                 tags:
                     - { name: sonata.admin.extension, global: true }
 
             app.important.extension:
-                class: AppBundle\Admin\Extension\ImportantAdminExtension
+                class: App\Admin\Extension\ImportantAdminExtension
                 tags:
                     - { name: sonata.admin.extension, priority: 5 }
 
-The second option is to add it to your config.yml file.
+The second option is to add it to your config.
 
 .. configuration-block::
 
     .. code-block:: yaml
 
-        # app/config/config.yml
+        # config/packages/sonata_admin.yaml
 
         sonata_admin:
             extensions:
@@ -73,8 +76,8 @@ The second option is to add it to your config.yml file.
                     admins:
                         - app.admin.article
 
-Using the ``config.yml`` file has some advantages, it allows you to keep your configuration centralized and it provides some
-extra options you can use to wire your extensions in a more dynamic way. This means you can change the behaviour of all
+Using ``config/packages/sonata_admin.yaml`` file has some advantages, it allows you to keep your configuration centralized and it provides some
+extra options you can use to wire your extensions in a more dynamic way. This means you can change the behavior of all
 admins that manage a class of a specific type.
 
 admins:
@@ -97,18 +100,17 @@ instanceof:
     of that class the extension will be added to that admin.
 
 uses:
-    Requires PHP >= 5.4.0. Specify one or more traits. If the managed class of an admin uses one of the specified traits the extension will be
+    Specify one or more traits. If the managed class of an admin uses one of the specified traits the extension will be
     added to that admin.
 
 priority:
     Can be a positive or negative integer. The higher the priority, the earlier it’s executed.
 
-
 .. configuration-block::
 
     .. code-block:: yaml
 
-        # app/config/config.yml
+        # config/packages/sonata_admin.yaml
 
         sonata_admin:
             extensions:
@@ -116,13 +118,13 @@ priority:
                     admins:
                         - app.admin.article
                     implements:
-                        - AppBundle\Publish\PublishStatusInterface
+                        - App\Publish\PublishStatusInterface
                     excludes:
                         - app.admin.blog
                         - app.admin.news
                     extends:
-                        - AppBundle\Document\Blog
+                        - App\Document\Blog
                     instanceof:
-                        -  AppBundle\Document\Page
+                        -  App\Document\Page
                     uses:
-                        -  AppBundle\Trait\Timestampable
+                        -  App\Trait\Timestampable

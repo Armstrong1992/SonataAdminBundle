@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -16,6 +18,8 @@ use Symfony\Component\Config\ConfigCache;
 use Symfony\Component\Config\Resource\FileResource;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class RoutesCache
@@ -47,7 +51,7 @@ class RoutesCache
      */
     public function load(AdminInterface $admin)
     {
-        $filename = $this->cacheFolder.'/route_'.md5($admin->getCode());
+        $filename = sprintf('%s/route_%s', $this->cacheFolder, md5($admin->getCode()));
 
         $cache = new ConfigCache($filename, $this->debug);
         if (!$cache->isFresh()) {
@@ -60,14 +64,16 @@ class RoutesCache
             }
 
             if (!$admin->getRoutes()) {
-                throw new \RuntimeException('Invalid data type, AdminInterface::getRoutes must return a RouteCollection');
+                throw new \RuntimeException(
+                    'Invalid data type, AdminInterface::getRoutes must return a RouteCollection'
+                );
             }
 
             foreach ($admin->getRoutes()->getElements() as $code => $route) {
                 $routes[$code] = $route->getDefault('_sonata_name');
             }
 
-            if (!is_array($admin->getExtensions())) {
+            if (!\is_array($admin->getExtensions())) {
                 throw new \RuntimeException('extensions must be an array');
             }
 

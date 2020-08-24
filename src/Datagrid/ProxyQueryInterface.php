@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -42,29 +44,33 @@ interface ProxyQueryInterface
     public function setSortBy($parentAssociationMappings, $fieldMapping);
 
     /**
-     * @return mixed
+     * @return string
      */
     public function getSortBy();
 
     /**
-     * @param mixed $sortOrder
+     * @param string $sortOrder
      *
      * @return ProxyQueryInterface
      */
     public function setSortOrder($sortOrder);
 
     /**
-     * @return mixed
+     * @return string
      */
     public function getSortOrder();
 
     /**
+     * NEXT_MAJOR: Remove this method.
+     *
+     * @deprecated since sonata-project/admin-bundle 3.74, to be removed in 4.0.
+     *
      * @return mixed
      */
     public function getSingleScalarResult();
 
     /**
-     * @param int $firstResult
+     * @param int|null $firstResult
      *
      * @return ProxyQueryInterface
      */
@@ -76,26 +82,24 @@ interface ProxyQueryInterface
     public function getFirstResult();
 
     /**
-     * @param int $maxResults
+     * @param int|null $maxResults
      *
      * @return ProxyQueryInterface
      */
     public function setMaxResults($maxResults);
 
     /**
-     * @return mixed
+     * @return int|null
      */
     public function getMaxResults();
 
     /**
-     * @return mixed
+     * @return int
      */
     public function getUniqueParameterId();
 
     /**
-     * @param array $associationMappings
-     *
-     * @return mixed
+     * @return string
      */
     public function entityJoin(array $associationMappings);
 }

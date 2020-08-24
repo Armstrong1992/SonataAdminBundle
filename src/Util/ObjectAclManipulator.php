@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -32,7 +34,7 @@ abstract class ObjectAclManipulator implements ObjectAclManipulatorInterface
         OutputInterface $output,
         AdminInterface $admin,
         \Traversable $oids,
-        UserSecurityIdentity $securityIdentity = null
+        ?UserSecurityIdentity $securityIdentity = null
     ) {
         $countAdded = 0;
         $countUpdated = 0;

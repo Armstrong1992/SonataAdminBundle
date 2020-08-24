@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -23,14 +25,14 @@ class ModelAutocompleteTypeTest extends TypeTestCase
      */
     private $type;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->type = new ModelAutocompleteType();
 
         parent::setUp();
     }
 
-    public function testGetDefaultOptions()
+    public function testGetDefaultOptions(): void
     {
         $modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
         $optionResolver = new OptionsResolver();
@@ -68,7 +70,7 @@ class ModelAutocompleteTypeTest extends TypeTestCase
         $this->assertSame('', $options['dropdown_css_class']);
         $this->assertSame('', $options['dropdown_item_css_class']);
 
-        $this->assertSame('SonataAdminBundle:Form/Type:sonata_type_model_autocomplete.html.twig', $options['template']);
+        $this->assertSame('@SonataAdmin/Form/Type/sonata_type_model_autocomplete.html.twig', $options['template']);
 
         $this->assertSame('', $options['context']);
 
@@ -77,7 +79,7 @@ class ModelAutocompleteTypeTest extends TypeTestCase
         $this->assertSame('SonataAdminBundle', $options['btn_catalogue']);
     }
 
-    public function testGetBlockPrefix()
+    public function testGetBlockPrefix(): void
     {
         $this->assertSame('sonata_type_model_autocomplete', $this->type->getBlockPrefix());
     }

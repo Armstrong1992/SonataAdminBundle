@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -14,6 +16,8 @@ namespace Sonata\AdminBundle\Util;
 use Symfony\Component\Form\FormBuilderInterface;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class FormBuilderIterator extends \RecursiveArrayIterator
@@ -48,6 +52,7 @@ class FormBuilderIterator extends \RecursiveArrayIterator
      */
     public function __construct(FormBuilderInterface $formBuilder, $prefix = false)
     {
+        parent::__construct();
         $this->formBuilder = $formBuilder;
         $this->prefix = $prefix ? $prefix : $formBuilder->getName();
         $this->iterator = new \ArrayIterator(self::getKeys($formBuilder));
@@ -87,7 +92,7 @@ class FormBuilderIterator extends \RecursiveArrayIterator
 
     public function hasChildren()
     {
-        return count(self::getKeys($this->current())) > 0;
+        return \count(self::getKeys($this->current())) > 0;
     }
 
     /**

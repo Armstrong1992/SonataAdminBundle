@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -14,12 +16,14 @@ namespace Sonata\AdminBundle\Util;
 use Symfony\Component\Form\FormView;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class FormViewIterator implements \RecursiveIterator
 {
     /**
-     * @var \ArrayIterator
+     * @var \ArrayIterator<string, FormView>
      */
     protected $iterator;
 
@@ -35,7 +39,7 @@ class FormViewIterator implements \RecursiveIterator
 
     public function hasChildren()
     {
-        return count($this->current()->children) > 0;
+        return \count($this->current()->children) > 0;
     }
 
     public function current()

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -20,11 +22,12 @@ use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
  */
 interface ShowBuilderInterface extends BuilderInterface
 {
+    /**
+     * @return FieldDescriptionCollection
+     */
     public function getBaseList(array $options = []);
 
     /**
-     * @abstract
-     *
      * @param string|null $type
      */
     public function addField(

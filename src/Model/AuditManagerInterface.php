@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -37,7 +39,7 @@ interface AuditManagerInterface
      *
      * @param string $class
      *
-     * @throws \RuntimeException
+     * @throws \RuntimeException // NEXT_MAJOR: Throw a \LogicException instead
      *
      * @return AuditReaderInterface
      */

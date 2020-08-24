@@ -12,8 +12,8 @@ The ``FOSUserBundle`` adds support for a database-backed user system in Symfony.
 It provides a flexible framework for user management that aims to handle common
 tasks such as user login, registration and password retrieval.
 
-The ``SonataUserBundle`` is just a thin wrapper to include the ``FOSUserBundle``
-into the ``AdminBundle``. The ``SonataUserBundle`` includes:
+The ``SonataUserBundle`` is a thin wrapper to include the ``FOSUserBundle`` into
+the ``SonataAdminBundle``. The ``SonataUserBundle`` includes:
 
 * A default login area
 * A default ``user_block`` template which is used to display the current user
@@ -59,7 +59,7 @@ Using roles:
 
     .. code-block:: yaml
 
-        # app/config/config.yml
+        # config/packages/sonata_admin.yaml
 
         sonata_admin:
             security:
@@ -74,7 +74,7 @@ Using ACL:
 
     .. code-block:: yaml
 
-        # app/config/config.yml
+        # config/packages/sonata_admin.yaml
 
         sonata_admin:
             security:
@@ -132,27 +132,28 @@ service), Sonata will check if the user has the ``ROLE_APP_ADMIN_FOO_EDIT`` or `
 
 .. note::
 
-    Declaring the same admin as `AppBundle\Admin\FooAdmin` results in
-    ``ROLE_APPBUNDLE\ADMIN\FOOADMIN_EDIT`` and ``ROLE_APPBUNDLE\ADMIN\FOOADMIN_ALL``!
+    Declaring the same admin as ``App\Admin\FooAdmin`` results in
+    ``ROLE_APP\ADMIN\FOOADMIN_EDIT`` and ``ROLE_APP\ADMIN\FOOADMIN_ALL``!
 
 The role name will be based on the name of your admin service.
+
 ========================   ======================================================
 app.admin.foo              ROLE_APP_ADMIN_FOO_{PERMISSION}
 my.blog.admin.foo_bar      ROLE_MY_BLOG_ADMIN_FOO_BAR_{PERMISSION}
-AppBundle\Admin\FooAdmin   ROLE_APPBUNDLE\ADMIN\FOOADMIN_{PERMISSION}
+App\\Admin\\FooAdmin       ROLE_APP\\ADMIN\\FOOADMIN_{PERMISSION}
 ========================   ======================================================
 
 .. note::
 
     If your admin service is named like ``my.blog.admin.foo_bar`` (note the underscore ``_``) it will become: ``ROLE_MY_BLOG_ADMIN_FOO_BAR_{PERMISSION}``
 
-So our ``security.yml`` file may look something like this:
+So our ``security.yaml`` file may look something like this:
 
 .. configuration-block::
 
     .. code-block:: yaml
 
-        # app/config/security.yml
+        # config/packages/security.yaml
 
         security:
             # ...
@@ -189,17 +190,13 @@ in the Symfony documentation.
 Usage
 ~~~~~
 
-You can now test if a user is authorized from an Admin class:
-
-.. code-block:: php
+You can now test if a user is authorized from an Admin class::
 
     if ($this->hasAccess('list')) {
         // ...
     }
 
-From a controller extending ``Sonata\AdminBundle\Controller\CRUDController``:
-
-.. code-block:: php
+From a controller extending ``Sonata\AdminBundle\Controller\CRUDController``::
 
     if ($this->admin->hasAccess('list')) {
         // ...
@@ -209,8 +206,8 @@ Or from a Twig template:
 
 .. code-block:: jinja
 
-    {% if is_granted('VIEW') %}
-        <p>Hello there!</p>
+    {% if admin.hasAccess('list') %}
+        {# ... #}
     {% endif %}
 
 Note that you do not have to re-specify the prefix.
@@ -239,8 +236,8 @@ Then declare your handler as a service:
 
     .. code-block:: xml
 
-        <service id="app.security.handler.role" class="AppBundle\Security\Handler\RoleSecurityHandler" public="false">
-            <argument type="service" id="security.context" on-invalid="null" />
+        <service id="app.security.handler.role" class="App\Security\Handler\RoleSecurityHandler" public="false">
+            <argument type="service" id="security.context" on-invalid="null"/>
             <argument type="collection">
                 <argument>ROLE_SUPER_ADMIN</argument>
             </argument>
@@ -252,7 +249,7 @@ And specify it as Sonata security handler on your configuration:
 
     .. code-block:: yaml
 
-        # app/config/config.yml
+        # config/packages/sonata_admin.yaml
 
         sonata_admin:
             security:
@@ -261,7 +258,7 @@ And specify it as Sonata security handler on your configuration:
 ACL and FriendsOfSymfony/UserBundle
 -----------------------------------
 
-If you want an easy way to handle users, please use:
+If you want a straightforward way to handle users, please use:
 
 - `FOSUserBundle <https://github.com/FriendsOfSymfony/FOSUserBundle>`_: handles
   users and groups stored in RDBMS or MongoDB
@@ -279,14 +276,11 @@ Configuration
 
 Before you can use ``FriendsOfSymfony/FOSUserBundle`` you need to set it up as
 described in the documentation of the bundle. In step 4 you need to create a
-User class (in a custom UserBundle). Do it as follows:
+User class (in a custom UserBundle). Do it as follows::
 
-.. code-block:: php
+    // src/Entity/User.php
 
-    <?php
-    // src/AppBundle/Entity/User.php
-
-    namespace AppBundle\Entity;
+    namespace App\Entity;
 
     use Sonata\UserBundle\Entity\BaseUser as BaseUser;
     use Doctrine\ORM\Mapping as ORM;
@@ -311,18 +305,18 @@ User class (in a custom UserBundle). Do it as follows:
         }
     }
 
-In your ``app/config/config.yml`` you then need to put the following:
+In your ``config/packages/fos_user.yaml`` you then need to put the following:
 
 .. configuration-block::
 
     .. code-block:: yaml
 
-        # app/config/config.yml
+        # config/packages/fos_user.yaml
 
         fos_user:
             db_driver: orm
             firewall_name: main
-            user_class: AppBundle\Entity\User
+            user_class: App\Entity\User
 
 The following configuration for the SonataUserBundle defines:
 
@@ -337,31 +331,23 @@ The following configuration for the SonataUserBundle defines:
 
     .. code-block:: yaml
 
-        # src/AppBundle/Resources/config/services.yml
+        # config/services.yaml
 
-        # Symfony >= 3
         services:
             security.acl.permission.map:
               class: Sonata\AdminBundle\Security\Acl\Permission\AdminPermissionMap
 
-            # optionally use a custom MaskBuilder
-            #sonata.admin.security.mask.builder:
-            #  class: Sonata\AdminBundle\Security\Acl\Permission\MaskBuilder
-
-        # Symfony < 3
+        # optionally use a custom MaskBuilder
         parameters:
-            security.acl.permission.map.class: Sonata\AdminBundle\Security\Acl\Permission\AdminPermissionMap
+            sonata.admin.security.mask.builder.class: Sonata\AdminBundle\Security\Acl\Permission\MaskBuilder
 
-            # optionally use a custom MaskBuilder
-            #sonata.admin.security.mask.builder.class: Sonata\AdminBundle\Security\Acl\Permission\MaskBuilder
-
-In ``app/config/security.yml``:
+In ``config/packages/security.yaml``:
 
 .. configuration-block::
 
     .. code-block:: yaml
 
-        # app/config/security.yml
+        # config/packages/security.yaml
 
         security:
             providers:
@@ -416,13 +402,13 @@ In ``app/config/security.yml``:
             acl:
                 connection: default
 
-- Install the ACL tables ``php bin/console init:acl``
+- Install the ACL tables ``bin/console init:acl``
 
 - Create a new root user:
 
 .. code-block:: bash
 
-    $ php bin/console fos:user:create --super-admin
+    bin/console fos:user:create --super-admin
         Please choose a username:root
         Please choose an email:root@domain.com
         Please choose a password:root
@@ -432,7 +418,7 @@ If you have Admin classes, you can install or update the related CRUD ACL rules:
 
 .. code-block:: bash
 
-    $ php bin/console sonata:admin:setup-acl
+    bin/console sonata:admin:setup-acl
     Starting ACL AdminBundle configuration
     > install ACL for sonata.media.admin.media
        - add role: ROLE_SONATA_MEDIA_ADMIN_MEDIA_GUEST, permissions: ["VIEW","LIST"]
@@ -446,19 +432,20 @@ object of an admin:
 
 .. code-block:: bash
 
-    $ php bin/console sonata:admin:generate-object-acl
+    bin/console sonata:admin:generate-object-acl
 
 Optionally, you can specify an object owner, and step through each admin. See
 the help of the command for more information.
 
-If you try to access to the admin class you should see the login form, just
-log in with the ``root`` user.
+If you try to access to the admin class you should see the login form, log in
+with the ``root`` user.
 
 An Admin is displayed in the dashboard (and menu) when the user has the role
 ``LIST``. To change this override the ``showIn`` method in the Admin class.
 
 Roles and Access control lists
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 A user can have several roles when working with an application. Each Admin class
 has several roles, and each role specifies the permissions of the user for the
 ``Admin`` class. Or more specifically, what the user can do with the domain object(s)
@@ -515,7 +502,7 @@ Vocabulary used for Access Control Lists:
   prevent that multiple voters vote on the same class with overlapping bitmasks.
 
 See the cookbook article "`Advanced ACL concepts
-<http://symfony.com/doc/current/cookbook/security/acl_advanced.html#pre-authorization-decisions.>`_"
+<https://symfony.com/doc/current/cookbook/security/acl_advanced.html#pre-authorization-decisions.>`_"
 for the meaning of the different permissions.
 
 How is access granted?
@@ -547,14 +534,11 @@ Create a custom voter or a custom permission map
 In some occasions you need to create a custom voter or a custom permission map
 because for example you want to restrict access using extra rules:
 
-- create a custom voter class that extends the ``AclVoter``
+- create a custom voter class that extends the ``AclVoter``::
 
-.. code-block:: php
+    // src/Security/Authorization/Voter/UserAclVoter.php
 
-    <?php
-    // src/AppBundle/Security/Authorization/Voter/UserAclVoter.php
-
-    namespace AppBundle\Security\Authorization\Voter;
+    namespace App\Security\Authorization\Voter;
 
     use FOS\UserBundle\Model\UserInterface;
     use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -608,18 +592,18 @@ because for example you want to restrict access using extra rules:
 
     .. code-block:: xml
 
-        <!-- src/AppBundle/Resources/config/services.xml -->
+        <!-- config/services.xml -->
 
-        <!-- <service id="security.acl.user_permission.map" class="AppBundle\Security\Acl\Permission\UserAdminPermissionMap" public="false"></service> -->
+        <!-- <service id="security.acl.user_permission.map" class="App\Security\Acl\Permission\UserAdminPermissionMap" public="false"></service> -->
 
-        <service id="security.acl.voter.user_permissions" class="AppBundle\Security\Authorization\Voter\UserAclVoter" public="false">
-            <tag name="monolog.logger" channel="security" />
-            <argument type="service" id="security.acl.provider" />
-            <argument type="service" id="security.acl.object_identity_retrieval_strategy" />
-            <argument type="service" id="security.acl.security_identity_retrieval_strategy" />
-            <argument type="service" id="security.acl.permission.map" />
-            <argument type="service" id="logger" on-invalid="null" />
-            <tag name="security.voter" priority="255" />
+        <service id="security.acl.voter.user_permissions" class="App\Security\Authorization\Voter\UserAclVoter" public="false">
+            <tag name="monolog.logger" channel="security"/>
+            <argument type="service" id="security.acl.provider"/>
+            <argument type="service" id="security.acl.object_identity_retrieval_strategy"/>
+            <argument type="service" id="security.acl.security_identity_retrieval_strategy"/>
+            <argument type="service" id="security.acl.permission.map"/>
+            <argument type="service" id="logger" on-invalid="null"/>
+            <tag name="security.voter" priority="255"/>
         </service>
 
 - change the access decision strategy to ``unanimous``
@@ -628,7 +612,7 @@ because for example you want to restrict access using extra rules:
 
     .. code-block:: yaml
 
-        # app/config/security.yml
+        # config/packages/security.yaml
 
         security:
             access_decision_manager:
@@ -657,7 +641,7 @@ Usage
 ~~~~~
 
 Every time you create a new ``Admin`` class, you should start with the command
-``php bin/console sonata:admin:setup-acl`` so the ACL database will be updated
+``bin/console sonata:admin:setup-acl`` so the ACL database will be updated
 with the latest roles and permissions.
 
 In the templates, or in your code, you can use the Admin method ``hasAccess()``:
@@ -724,9 +708,7 @@ By default, the ACL editor allows to set permissions for all users managed by
 
 To customize displayed user override
 ``Sonata\AdminBundle\Controller\CRUDController::getAclUsers()``. This method must
-return an iterable collection of users.
-
-.. code-block:: php
+return an iterable collection of users::
 
     protected function getAclUsers()
     {
@@ -746,9 +728,7 @@ By default, the ACL editor allows to set permissions for all roles.
 
 To customize displayed role override
 ``Sonata\AdminBundle\Controller\CRUDController::getAclRoles()``. This method must
-return an iterable collection of roles.
-
-.. code-block:: php
+return an iterable collection of roles::
 
     protected function getAclRoles()
     {
@@ -775,7 +755,7 @@ service to use when retrieving your users.
 
     .. code-block:: yaml
 
-        # app/config/config.yml
+        # config/packages/sonata_admin.yaml
 
         sonata_admin:
             security:
@@ -784,5 +764,5 @@ service to use when retrieving your users.
                 acl_user_manager: my_user_manager
 
 .. _`SonataUserBundle's documentation area`: https://sonata-project.org/bundles/user/master/doc/reference/installation.html
-.. _`changing the access decision strategy`: http://symfony.com/doc/2.2/cookbook/security/voters.html#changing-the-access-decision-strategy
-.. _`create your own voter`: http://symfony.com/doc/2.2/cookbook/security/voters.html
+.. _`changing the access decision strategy`: https://symfony.com/doc/4.4/security/voters.html#changing-the-access-decision-strategy
+.. _`create your own voter`: https://symfony.com/doc/4.4/security/voters.html

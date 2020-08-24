@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -21,6 +23,8 @@ use Symfony\Component\Form\FormBuilderInterface;
 /**
  * This class is use to simulate the Form API.
  *
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class FormMapper extends BaseGroupedMapper
@@ -29,6 +33,11 @@ class FormMapper extends BaseGroupedMapper
      * @var FormBuilderInterface
      */
     protected $formBuilder;
+
+    /**
+     * @var FormContractorInterface
+     */
+    protected $builder;
 
     public function __construct(
         FormContractorInterface $formContractor,
@@ -47,14 +56,14 @@ class FormMapper extends BaseGroupedMapper
     }
 
     /**
-     * @param string $name
-     * @param string $type
+     * @param FormBuilderInterface|string $name
+     * @param string|null                 $type
      *
      * @return $this
      */
     public function add($name, $type = null, array $options = [], array $fieldDescriptionOptions = [])
     {
-        if (null !== $this->apply && !$this->apply) {
+        if (!$this->shouldApply()) {
             return $this;
         }
 
@@ -84,10 +93,10 @@ class FormMapper extends BaseGroupedMapper
 
         // Try to autodetect type
         if ($name instanceof FormBuilderInterface && null === $type) {
-            $fieldDescriptionOptions['type'] = get_class($name->getType()->getInnerType());
+            $fieldDescriptionOptions['type'] = \get_class($name->getType()->getInnerType());
         }
 
-        if (!isset($fieldDescriptionOptions['type']) && is_string($type)) {
+        if (!isset($fieldDescriptionOptions['type']) && \is_string($type)) {
             $fieldDescriptionOptions['type'] = $type;
         }
 
@@ -102,19 +111,20 @@ class FormMapper extends BaseGroupedMapper
         );
 
         // Note that the builder var is actually the formContractor:
-        $this->builder->fixFieldDescription($this->admin, $fieldDescription, $fieldDescriptionOptions);
+        $this->builder->fixFieldDescription($this->admin, $fieldDescription);
 
-        if ($fieldName != $name) {
+        if ($fieldName !== $name) {
             $fieldDescription->setName($fieldName);
         }
 
-        $this->admin->addFormFieldDescription($fieldName, $fieldDescription);
-
         if ($name instanceof FormBuilderInterface) {
-            $this->formBuilder->add($name);
+            $type = null;
+            $options = [];
         } else {
+            $name = $fieldDescription->getName();
+
             // Note that the builder var is actually the formContractor:
-            $options = array_replace_recursive($this->builder->getDefaultOptions($type, $fieldDescription), $options);
+            $options = array_replace_recursive($this->builder->getDefaultOptions($type, $fieldDescription) ?? [], $options);
 
             // be compatible with mopa if not installed, avoid generating an exception for invalid option
             // force the default to false ...
@@ -123,20 +133,29 @@ class FormMapper extends BaseGroupedMapper
             }
 
             if (!isset($options['label'])) {
-                $options['label'] = $this->admin->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(), 'form', 'label');
+                $options['label'] = $this->admin->getLabelTranslatorStrategy()->getLabel($name, 'form', 'label');
             }
 
-            $help = null;
+            // NEXT_MAJOR: Remove this block.
             if (isset($options['help'])) {
-                $help = $options['help'];
-                unset($options['help']);
-            }
+                $containsHtml = $options['help'] !== strip_tags($options['help']);
 
-            $this->formBuilder->add($fieldDescription->getName(), $type, $options);
+                if (!isset($options['help_html']) && $containsHtml) {
+                    @trigger_error(
+                        'Using HTML syntax within the "help" option and not setting the "help_html" option to "true" is deprecated'
+                        .' since sonata-project/admin-bundle 3.74 and it will not work in version 4.0.',
+                        E_USER_DEPRECATED
+                    );
 
-            if (null !== $help) {
-                $this->admin->getFormFieldDescription($fieldDescription->getName())->setHelp($help);
+                    $options['help_html'] = true;
+                }
             }
+        }
+
+        $this->admin->addFormFieldDescription($fieldName, $fieldDescription);
+
+        if (!isset($fieldDescriptionOptions['role']) || $this->admin->isGranted($fieldDescriptionOptions['role'])) {
+            $this->formBuilder->add($name, $type, $options);
         }
 
         return $this;
@@ -186,7 +205,7 @@ class FormMapper extends BaseGroupedMapper
 
         // When the default tab is used, the tabname is not prepended to the index in the group array
         if ('default' !== $tab) {
-            $group = $tab.'.'.$group;
+            $group = sprintf('%s.%s', $tab, $group);
         }
 
         if (isset($groups[$group])) {
@@ -197,12 +216,12 @@ class FormMapper extends BaseGroupedMapper
         unset($groups[$group]);
 
         $tabs = $this->getTabs();
-        $key = array_search($group, $tabs[$tab]['groups']);
+        $key = array_search($group, $tabs[$tab]['groups'], true);
 
         if (false !== $key) {
             unset($tabs[$tab]['groups'][$key]);
         }
-        if ($deleteEmptyTab && 0 == count($tabs[$tab]['groups'])) {
+        if ($deleteEmptyTab && 0 === \count($tabs[$tab]['groups'])) {
             unset($tabs[$tab]);
         }
 
@@ -232,24 +251,46 @@ class FormMapper extends BaseGroupedMapper
     }
 
     /**
+     * NEXT_MAJOR: Remove this method.
+     *
+     * @deprecated since sonata-project/admin-bundle 3.74 and will be removed in version 4.0. Use Symfony Form "help" option instead.
+     *
      * @return FormMapper
      */
     public function setHelps(array $helps = [])
     {
+        @trigger_error(sprintf(
+            'The "%s()" method is deprecated since sonata-project/admin-bundle 3.74 and will be removed in version 4.0.'
+            .' Use Symfony Form "help" option instead.',
+            __METHOD__
+        ), E_USER_DEPRECATED);
+
         foreach ($helps as $name => $help) {
-            $this->addHelp($name, $help);
+            $this->addHelp($name, $help, 'sonata_deprecation_mute');
         }
 
         return $this;
     }
 
     /**
+     * NEXT_MAJOR: Remove this method.
+     *
+     * @deprecated since sonata-project/admin-bundle 3.74 and will be removed in version 4.0. Use Symfony Form "help" option instead.
+     *
      * @return FormMapper
      */
     public function addHelp($name, $help)
     {
+        if ('sonata_deprecation_mute' !== (\func_get_args()[2] ?? null)) {
+            @trigger_error(sprintf(
+                'The "%s()" method is deprecated since sonata-project/admin-bundle 3.74 and will be removed in version 4.0.'
+                .' Use Symfony Form "help" option instead.',
+                __METHOD__
+            ), E_USER_DEPRECATED);
+        }
+
         if ($this->admin->hasFormFieldDescription($name)) {
-            $this->admin->getFormFieldDescription($name)->setHelp($help);
+            $this->admin->getFormFieldDescription($name)->setHelp($help, 'sonata_deprecation_mute');
         }
 
         return $this;
@@ -272,7 +313,9 @@ class FormMapper extends BaseGroupedMapper
 
     protected function getGroups()
     {
-        return $this->admin->getFormGroups();
+        // NEXT_MAJOR: Remove the argument "sonata_deprecation_mute" in the following call.
+
+        return $this->admin->getFormGroups('sonata_deprecation_mute');
     }
 
     protected function setGroups(array $groups)
@@ -282,7 +325,9 @@ class FormMapper extends BaseGroupedMapper
 
     protected function getTabs()
     {
-        return $this->admin->getFormTabs();
+        // NEXT_MAJOR: Remove the argument "sonata_deprecation_mute" in the following call.
+
+        return $this->admin->getFormTabs('sonata_deprecation_mute');
     }
 
     protected function setTabs(array $tabs)

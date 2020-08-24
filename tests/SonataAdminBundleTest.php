@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -16,27 +18,28 @@ use Sonata\AdminBundle\DependencyInjection\Compiler\AddDependencyCallsCompilerPa
 use Sonata\AdminBundle\DependencyInjection\Compiler\AddFilterTypeCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\Compiler\ExtensionCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\Compiler\GlobalVariablesCompilerPass;
+use Sonata\AdminBundle\DependencyInjection\Compiler\ModelManagerCompilerPass;
+use Sonata\AdminBundle\DependencyInjection\Compiler\ObjectAclManipulatorCompilerPass;
+use Sonata\AdminBundle\DependencyInjection\Compiler\TwigStringExtensionCompilerPass;
 use Sonata\AdminBundle\SonataAdminBundle;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * Test for SonataAdminBundle.
- *
  * @author Andrej Hudec <pulzarraider@gmail.com>
  */
 class SonataAdminBundleTest extends TestCase
 {
-    public function testBuild()
+    public function testBuild(): void
     {
         $containerBuilder = $this->getMockBuilder(ContainerBuilder::class)
             ->setMethods(['addCompilerPass'])
             ->getMock();
 
-        $containerBuilder->expects($this->exactly(4))
+        $containerBuilder->expects($this->exactly(7))
             ->method('addCompilerPass')
-            ->will($this->returnCallback(function (CompilerPassInterface $pass, $type = PassConfig::TYPE_BEFORE_OPTIMIZATION) {
+            ->willReturnCallback(function (CompilerPassInterface $pass, $type = PassConfig::TYPE_BEFORE_OPTIMIZATION): void {
                 if ($pass instanceof AddDependencyCallsCompilerPass) {
                     return;
                 }
@@ -53,8 +56,30 @@ class SonataAdminBundleTest extends TestCase
                     return;
                 }
 
-                $this->fail(sprintf('Compiler pass is not one of the expected types. Expects "Sonata\AdminBundle\DependencyInjection\Compiler\AddDependencyCallsCompilerPass", "Sonata\AdminBundle\DependencyInjection\Compiler\AddFilterTypeCompilerPass" or "Sonata\AdminBundle\DependencyInjection\Compiler\ExtensionCompilerPass", but got "%s".', get_class($pass)));
-            }));
+                if ($pass instanceof ModelManagerCompilerPass) {
+                    return;
+                }
+
+                if ($pass instanceof ObjectAclManipulatorCompilerPass) {
+                    return;
+                }
+
+                if ($pass instanceof TwigStringExtensionCompilerPass) {
+                    return;
+                }
+
+                $this->fail(sprintf(
+                    'CompilerPass is not one of the expected types. Expects "%s", "%s", "%s", "%s", "%s", "%s" or "%s", but got "%s".',
+                    AddDependencyCallsCompilerPass::class,
+                    AddFilterTypeCompilerPass::class,
+                    ExtensionCompilerPass::class,
+                    GlobalVariablesCompilerPass::class,
+                    ModelManagerCompilerPass::class,
+                    ObjectAclManipulatorCompilerPass::class,
+                    TwigStringExtensionCompilerPass::class,
+                    \get_class($pass)
+                ));
+            });
 
         $bundle = new SonataAdminBundle();
         $bundle->build($containerBuilder);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -21,31 +23,31 @@ use Sonata\AdminBundle\Tests\Fixtures\Entity\Form\FooEntity;
  */
 class ArrayToModelTransformerTest extends TestCase
 {
-    private $modelManager = null;
+    private $modelManager;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
     }
 
-    public function testReverseTransformEntity()
+    public function testReverseTransformEntity(): void
     {
         $transformer = new ArrayToModelTransformer($this->modelManager, FooEntity::class);
 
-        $entity = new FooEntity();
-        $this->assertSame($entity, $transformer->reverseTransform($entity));
+        $model = new FooEntity();
+        $this->assertSame($model, $transformer->reverseTransform($model));
     }
 
     /**
      * @dataProvider getReverseTransformTests
      */
-    public function testReverseTransform($value)
+    public function testReverseTransform($value): void
     {
         $transformer = new ArrayToModelTransformer($this->modelManager, FooEntity::class);
 
-        $this->modelManager->expects($this->any())
+        $this->modelManager
             ->method('modelReverseTransform')
-            ->will($this->returnValue(new FooEntity()));
+            ->willReturn(new FooEntity());
 
         $this->assertInstanceOf(FooEntity::class, $transformer->reverseTransform($value));
     }
@@ -66,7 +68,7 @@ class ArrayToModelTransformerTest extends TestCase
     /**
      * @dataProvider getTransformTests
      */
-    public function testTransform($expected, $value)
+    public function testTransform($expected, $value): void
     {
         $transformer = new ArrayToModelTransformer($this->modelManager, FooEntity::class);
 

@@ -468,15 +468,15 @@
             </trans-unit>
             <trans-unit id="title_select_subclass">
                 <source>title_select_subclass</source>
-                <target>title_select_subclass</target>
+                <target>Sélectionnez le type d'objet</target>
             </trans-unit>
             <trans-unit id="no_subclass_available">
                 <source>no_subclass_available</source>
-                <target>no_subclass_available</target>
+                <target>Aucun type d'objet disponible</target>
             </trans-unit>
             <trans-unit id="label_unknown_user">
                 <source>label_unknown_user</source>
-                <target>label_unknown_user</target>
+                <target>inconnu</target>
             </trans-unit>
             <trans-unit id="read_more">
                 <source>read_more</source>
@@ -485,6 +485,18 @@
             <trans-unit id="read_less">
                 <source>read_less</source>
                 <target>Fermer</target>
+            </trans-unit>
+            <trans-unit id="toggle_navigation">
+                <source>toggle_navigation</source>
+                <target>Basculer la navigation</target>
+            </trans-unit>
+            <trans-unit id="label_type_starts_with">
+                <source>label_type_starts_with</source>
+                <target>commence par</target>
+            </trans-unit>
+            <trans-unit id="label_type_ends_with">
+                <source>label_type_ends_with</source>
+                <target>termine par</target>
             </trans-unit>
         </body>
     </file>

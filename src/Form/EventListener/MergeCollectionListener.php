@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -17,6 +19,8 @@ use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class MergeCollectionListener implements EventSubscriberInterface
@@ -48,20 +52,20 @@ class MergeCollectionListener implements EventSubscriberInterface
 
         if (!$collection) {
             $collection = $data;
-        } elseif (0 === count($data)) {
+        } elseif (0 === \count($data)) {
             $this->modelManager->collectionClear($collection);
         } else {
             // merge $data into $collection
-            foreach ($collection as $entity) {
-                if (!$this->modelManager->collectionHasElement($data, $entity)) {
-                    $this->modelManager->collectionRemoveElement($collection, $entity);
+            foreach ($collection as $model) {
+                if (!$this->modelManager->collectionHasElement($data, $model)) {
+                    $this->modelManager->collectionRemoveElement($collection, $model);
                 } else {
-                    $this->modelManager->collectionRemoveElement($data, $entity);
+                    $this->modelManager->collectionRemoveElement($data, $model);
                 }
             }
 
-            foreach ($data as $entity) {
-                $this->modelManager->collectionAddElement($collection, $entity);
+            foreach ($data as $model) {
+                $this->modelManager->collectionAddElement($collection, $model);
             }
         }
 

@@ -18,40 +18,39 @@ Enable Lock Protection
 ----------------------
 
 By default, lock protection is disabled.
-You can enable it in your ``sonata_admin`` configuration :
+You can enable it in your ``sonata_admin`` configuration:
 
 .. configuration-block::
 
     .. code-block:: yaml
 
-        # app/config/config.yml
+        # config/packages/sonata_admin.yaml
 
         sonata_admin:
             options:
                 lock_protection: true
-                
-You must also configure each entity that you want to support by adding a field called ``$version`` on which the Doctrine ``Version`` feature is activated.
 
-Using Annotations:
+You must also configure each entity that you want to support by adding a
+field called ``$version`` on which the Doctrine ``Version`` feature is activated.
 
-.. code-block:: php
+Using Annotations::
 
-    <?php
-    // src/AppBundle/Entity/Car.php
-    namespace AppBundle\Entity\Car;
-    
+    // src/Entity/Car.php
+
+    namespace App\Entity\Car;
+
     use Doctrine\ORM\Mapping as ORM;
 
     class Car
     {
         // ...
-        
+
         /**
          * @ORM\Column(type="integer")
          * @ORM\Version
          */
         protected $version;
-        
+
         // ...
     }
 
@@ -59,20 +58,19 @@ Using XML:
 
 .. code-block:: xml
 
-    <?xml version="1.0" encoding="utf-8"?>
-    <!-- src/AppBundle/Resources/orm/Car.orm.xml -->
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!-- src/Resources/orm/Car.orm.xml -->
     <doctrine-mapping>
-        <entity name="AppBundle\Entity\Car">
+        <entity name="App\Entity\Car">
             <!-- ... -->
-    
-            <field name="version" type="integer" version="true" />
-    
+
+            <field name="version" type="integer" version="true"/>
+
             <!-- ... -->
         </entity>
     </doctrine-mapping>
-    
 
-For more information about this visit the `Doctrine docs <http://doctrine-orm.readthedocs.org/en/latest/reference/transactions-and-concurrency.html?highlight=optimistic#optimistic-locking>`_
+For more information about this visit the `Doctrine docs <https://www.doctrine-project.org/projects/doctrine-orm/en/2.7/reference/transactions-and-concurrency.html#optimistic-locking>`_
 
 .. note::
 

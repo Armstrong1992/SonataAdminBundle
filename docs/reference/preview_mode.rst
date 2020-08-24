@@ -4,18 +4,13 @@ Preview Mode
 Preview Mode is an optional view of an object before it is persisted or updated.
 
 The preview step can be enabled for an admin entity by overriding the public property
-``$supportsPreviewMode`` and setting it to true.
+``$supportsPreviewMode`` and setting it to true::
 
-.. code-block:: php
+    // src/AdminPostAdmin.php
 
-    <?php
-    // src/AppBundle/AdminPostAdmin.php
-
-    class PostAdmin extends AbstractAdmin
+    final class PostAdmin extends AbstractAdmin
     {
         public $supportsPreviewMode = true;
-
-        / ..
     }
 
 This will show a new button during create/edit mode named preview.
@@ -33,7 +28,6 @@ Accepting the preview will store the entity as if the preview step was never the
    :align: center
    :alt: Preview Button
 
-
 Simulating front-end rendering
 ------------------------------
 
@@ -49,27 +43,22 @@ globally through the template configuration for the key 'preview':
 
     .. code-block:: yaml
 
-        # app/config/config.yml
+        # config/packages/sonata_admin.yaml
 
         sonata_admin:
             templates:
-                preview:  AppBundle:CRUD:preview.html.twig
+                preview: '@App/CRUD/preview.html.twig'
 
-Or per admin entity by overriding the ``getTemplate($name)`` and returning the appropriate template when the key
-matches 'preview':
+Or per admin entity by overriding the ``getTemplate($name)`` and returning
+the appropriate template when the key matches 'preview'::
 
-.. code-block:: php
-
-    <?php
-    // src/AppBundle/Admin/PostAdmin.php
-
-    // ...
+    // src/Admin/PostAdmin.php
 
     public function getTemplate($name)
     {
         switch ($name) {
             case 'preview':
-                return 'AppBundle:CRUD:preview.html.twig';
+                return '@App/CRUD/preview.html.twig';
                 break;
             default:
                 return parent::getTemplate($name);
@@ -81,20 +70,20 @@ In either way the template should be extending your own layout, injecting the fo
 and finally overriding the action buttons to show the approve/decline buttons like the
 default preview.html.twig.
 
-The entity is passed to the view in a variable called **object**. If your original view expects
-a different object you can just set your own variables prior to calling parent().
+The entity is passed to the view in a variable called **object**. If your original view
+expects a different object you can set your own variables prior to calling ``parent()``.
 
 .. code-block:: jinja
 
-    {# 'AppBundle:CRUD:preview.html.twig #}
+    {# '@App/CRUD/preview.html.twig #}
 
-    {% extends 'AppBundle::layout.html.twig' %}
+    {% extends '@App/layout.html.twig' %}
 
     {% use '@SonataAdmin/CRUD/base_edit_form.html.twig' with form as parentForm %}
 
     {% import '@SonataAdmin/CRUD/base_edit_form_macro.html.twig' as form_helper %}
 
-    {# a block in 'AppBundle::layout.html.twig' expecting article #}
+    {# a block in '@App/layout.html.twig' expecting article #}
     {% block templateContent %}
         {% set article = object %}
 
@@ -103,7 +92,6 @@ a different object you can just set your own variables prior to calling parent()
         <div class="sonata-preview-form-container">
             {{ block('parentForm') }}
         </div>
-
     {% endblock %}
 
     {% block formactions %}

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -11,20 +13,43 @@
 
 namespace Sonata\AdminBundle\Command;
 
-use Sonata\AdminBundle\Admin\AdminInterface;
-use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Sonata\AdminBundle\Admin\Pool;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Validator\Mapping\ClassMetadata;
+use Symfony\Component\Validator\Mapping\Factory\MetadataFactoryInterface;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
-class ExplainAdminCommand extends ContainerAwareCommand
+class ExplainAdminCommand extends Command
 {
+    protected static $defaultName = 'sonata:admin:explain';
+
+    /**
+     * @var Pool
+     */
+    private $pool;
+
+    /**
+     * @var MetadataFactoryInterface
+     */
+    private $validator;
+
+    public function __construct(Pool $pool, MetadataFactoryInterface $validator)
+    {
+        $this->pool = $pool;
+        $this->validator = $validator;
+
+        parent::__construct();
+    }
+
     public function configure()
     {
-        $this->setName('sonata:admin:explain');
         $this->setDescription('Explain an admin service');
 
         $this->addArgument('admin', InputArgument::REQUIRED, 'The admin service id');
@@ -32,21 +57,17 @@ class ExplainAdminCommand extends ContainerAwareCommand
 
     public function execute(InputInterface $input, OutputInterface $output)
     {
-        $admin = $this->getContainer()->get($input->getArgument('admin'));
-
-        if (!$admin instanceof AdminInterface) {
-            throw new \RuntimeException(sprintf('Service "%s" is not an admin class', $input->getArgument('admin')));
-        }
+        $admin = $this->pool->getInstance($input->getArgument('admin'));
 
         $output->writeln('<comment>AdminBundle Information</comment>');
         $output->writeln(sprintf('<info>% -20s</info> : %s', 'id', $admin->getCode()));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Admin', get_class($admin)));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Admin', \get_class($admin)));
         $output->writeln(sprintf('<info>% -20s</info> : %s', 'Model', $admin->getClass()));
         $output->writeln(sprintf('<info>% -20s</info> : %s', 'Controller', $admin->getBaseControllerName()));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Model Manager', get_class($admin->getModelManager())));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Form Builder', get_class($admin->getFormBuilder())));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Datagrid Builder', get_class($admin->getDatagridBuilder())));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'List Builder', get_class($admin->getListBuilder())));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Model Manager', \get_class($admin->getModelManager())));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Form Builder', \get_class($admin->getFormBuilder())));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Datagrid Builder', \get_class($admin->getDatagridBuilder())));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'List Builder', \get_class($admin->getListBuilder())));
 
         if ($admin->isChild()) {
             $output->writeln(sprintf('<info>% -15s</info> : %s', 'Parent', $admin->getParent()->getCode()));
@@ -97,14 +118,23 @@ class ExplainAdminCommand extends ContainerAwareCommand
             ));
         }
 
-        $factory = $this->getContainer()->get('validator.validator_factory');
-        $metadata = $factory->getMetadataFor($admin->getClass());
+        $metadata = $this->validator->getMetadataFor($admin->getClass());
+        if (!$metadata instanceof ClassMetadata) {
+            throw new \UnexpectedValueException(
+                sprintf(
+                    'Cannot read metadata properties of %s because its metadata is an instance of %s instead of %s',
+                    $admin->getClass(),
+                    \get_class($metadata),
+                    ClassMetadata::class
+                )
+            );
+        }
 
         $output->writeln('');
         $output->writeln('<comment>Validation Framework</comment> - http://symfony.com/doc/3.0/book/validation.html');
         $output->writeln('<info>Properties constraints</info>');
 
-        if (0 == count($metadata->properties)) {
+        if (0 === \count($metadata->properties)) {
             $output->writeln('    <error>no property constraints defined !!</error>');
         } else {
             foreach ($metadata->properties as $name => $property) {
@@ -113,7 +143,7 @@ class ExplainAdminCommand extends ContainerAwareCommand
                 foreach ($property->getConstraints() as $constraint) {
                     $output->writeln(sprintf(
                         '    % -70s %s',
-                        get_class($constraint),
+                        \get_class($constraint),
                         implode('|', $constraint->groups)
                     ));
                 }
@@ -123,7 +153,7 @@ class ExplainAdminCommand extends ContainerAwareCommand
         $output->writeln('');
         $output->writeln('<info>Getters constraints</info>');
 
-        if (0 == count($metadata->getters)) {
+        if (0 === \count($metadata->getters)) {
             $output->writeln('    <error>no getter constraints defined !!</error>');
         } else {
             foreach ($metadata->getters as $name => $property) {
@@ -132,7 +162,7 @@ class ExplainAdminCommand extends ContainerAwareCommand
                 foreach ($property->getConstraints() as $constraint) {
                     $output->writeln(sprintf(
                         '    % -70s %s',
-                        get_class($constraint),
+                        \get_class($constraint),
                         implode('|', $constraint->groups)
                     ));
                 }
@@ -141,5 +171,7 @@ class ExplainAdminCommand extends ContainerAwareCommand
 
         $output->writeln('');
         $output->writeln('<info>done!</info>');
+
+        return 0;
     }
 }

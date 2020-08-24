@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -24,7 +26,7 @@ use Sonata\AdminBundle\Datagrid\SimplePager;
  */
 class SimplePagerTest extends TestCase
 {
-    public function setUp()
+    protected function setUp(): void
     {
         $this->pager = new SimplePager(10, 2);
         $this->proxyQuery = $this->getMockBuilder(ProxyQueryInterface::class)
@@ -32,13 +34,13 @@ class SimplePagerTest extends TestCase
             ->getMock();
     }
 
-    public function testInitNumPages()
+    public function testInitNumPages(): void
     {
         $pager = new SimplePager(10, 2);
         $this->proxyQuery->expects($this->once())
                 ->method('execute')
                 ->with([], null)
-                ->will($this->returnValue(new ArrayCollection(range(0, 12))));
+                ->willReturn(new ArrayCollection(range(0, 12)));
 
         $this->proxyQuery->expects($this->once())
             ->method('setMaxResults')
@@ -54,12 +56,12 @@ class SimplePagerTest extends TestCase
         $this->assertSame(2, $pager->getLastPage());
     }
 
-    public function testInitOffset()
+    public function testInitOffset(): void
     {
         $this->proxyQuery->expects($this->once())
             ->method('execute')
             ->with([], null)
-            ->will($this->returnValue(new ArrayCollection(range(0, 12))));
+            ->willReturn(new ArrayCollection(range(0, 12)));
 
         $this->proxyQuery->expects($this->once())
             ->method('setMaxResults')
@@ -77,7 +79,7 @@ class SimplePagerTest extends TestCase
         $this->assertSame(3, $this->pager->getLastPage());
     }
 
-    public function testNoPagesPerConfig()
+    public function testNoPagesPerConfig(): void
     {
         $this->proxyQuery->expects($this->once())
             ->method('setMaxResults')
@@ -96,12 +98,12 @@ class SimplePagerTest extends TestCase
         $this->assertSame(0, $this->pager->getLastPage());
     }
 
-    public function testNoPagesForNoResults()
+    public function testNoPagesForNoResults(): void
     {
         $this->proxyQuery->expects($this->once())
             ->method('execute')
             ->with([], null)
-            ->will($this->returnValue([]));
+            ->willReturn([]);
 
         $this->proxyQuery->expects($this->once())
             ->method('setMaxResults')
@@ -112,12 +114,53 @@ class SimplePagerTest extends TestCase
 
         $this->pager->setQuery($this->proxyQuery);
         $this->pager->init();
-        $this->AssertEquals(0, $this->pager->getLastPage());
+        $this->assertSame(1, $this->pager->getLastPage());
+        $this->assertSame(0, $this->pager->getNbResults());
     }
 
-    public function testInitNoQuery()
+    public function testInitNoQuery(): void
     {
         $this->expectException(\RuntimeException::class);
         $this->pager->init();
+    }
+
+    /**
+     * NEXT_MAJOR: Remove this test along with fixes to SimplePager.
+     */
+    public function testGetResultsReturnTypeArrayCollection(): void
+    {
+        $this->proxyQuery->expects($this->once())
+            ->method('execute')
+            ->with([], null)
+            ->willReturn(['foo', 'bar']);
+
+        $this->pager->setQuery($this->proxyQuery);
+        $this->pager->setMaxPerPage(1);
+
+        $this->assertInstanceOf(ArrayCollection::class, $this->pager->getResults());
+    }
+
+    public function getResultsReturnType(): array
+    {
+        return [
+            [['foo', 'bar'], 2],
+            [[], null],
+        ];
+    }
+
+    /**
+     * @dataProvider getResultsReturnType
+     */
+    public function testGetResultsReturnTypeArray(array $queryReturnValues, ?int $maxPerPage): void
+    {
+        $this->proxyQuery->expects($this->once())
+            ->method('execute')
+            ->with([], null)
+            ->willReturn($queryReturnValues);
+
+        $this->pager->setQuery($this->proxyQuery);
+        $this->pager->setMaxPerPage($maxPerPage);
+
+        $this->assertIsArray($this->pager->getResults());
     }
 }

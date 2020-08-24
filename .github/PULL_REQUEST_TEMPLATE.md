@@ -1,4 +1,7 @@
 <!-- THE PR TEMPLATE IS NOT AN OPTION. DO NOT DELETE IT, MAKE SURE YOU READ AND EDIT IT! -->
+## Subject
+
+<!-- Describe your Pull Request content here -->
 
 <!--
     Show us you choose the right branch.
@@ -14,19 +17,27 @@ I am targeting this branch, because {reason}.
     Remove it if this is not related.
 -->
 
-Closes #{put_issue_number_here}
+Closes #{put_issue_number_here}.
 
 ## Changelog
 
 <!-- MANDATORY
     Fill the changelog part inside the code block.
     Follow this schema: http://keepachangelog.com/
+    This will end up on https://github.com/sonata-project/SonataAdminBundle/releases,
+    please keep it short and clear and to the point
+-->
+
+<!--
+    If you are updating something that doesn't require
+    a release, you can delete the whole "Changelog" section.
+    (eg. update to docs, tests)
 -->
 
 <!-- REMOVE EMPTY SECTIONS -->
 ```markdown
 ### Added
-- Added some `Class::newMethod` to do great stuff
+- Added some `Class::newMethod()` to do great stuff.
 
 ### Changed
 
@@ -39,18 +50,15 @@ Closes #{put_issue_number_here}
 ### Security
 ```
 
+<!--
+    If this is a work in progress, uncomment the "To do" section.
+    You can add as many tasks as you want.
+    If some are not relevant, just remove them.
+-->
+<!--
 ## To do
 
-<!--
-    If this is a work in progress, COMPLETE and ADD needed tasks.
-    You can add as many tasks as you want.
-    If some are not relevant, just REMOVE them.
+- [ ] Update the tests;
+- [ ] Update the documentation;
+- [ ] Add an upgrade note.
 -->
-
-- [ ] Update the tests
-- [ ] Update the documentation
-- [ ] Add an upgrade note
-
-## Subject
-
-<!-- Describe your Pull Request content here -->

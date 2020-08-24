@@ -33,118 +33,113 @@ Basic configuration - the Entity
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Following the guidelines from the Symfony cookbook, we have an Entity definition
-that looks something like the YAML below (of course, you can achieve something
-similar with XML or Annotation based definitions too). In this example we are using
-the ``updated`` field to trigger the lifecycle callbacks by setting it based on the
-upload timestamp.
+that looks something like the YAML below (you can achieve something similar with XML
+or Annotation based definitions too). In this example we are using the ``updated``
+field to trigger the lifecycle callbacks by setting it based on the upload timestamp.
 
 .. configuration-block::
 
     .. code-block:: yaml
 
-        # src/AppBundle/Resources/config/Doctrine/Image.orm.yml
+        # src/Resources/config/Doctrine/Image.orm.yaml
 
-        AppBundleBundle\Entity\Image:
+        App\Entity\Image:
             type: entity
-            repositoryClass: AppBundle\Entity\Repositories\ImageRepository
+            repositoryClass: App\Entity\Repositories\ImageRepository
             table: images
             id:
                 id:
-                    type:         integer
-                    generator:    { strategy: AUTO }
+                    type:      integer
+                    generator: { strategy: AUTO }
             fields:
                 filename:
-                    type:         string
-                    length:       100
+                    type:      string
+                    length:    100
 
                 # changed when files are uploaded, to force preUpdate and postUpdate to fire
                 updated:
-                    type:         datetime
-                    nullable:     true
+                    type:      datetime
+                    nullable:  true
 
-                # ... other fields ...
+                # ...
             lifecycleCallbacks:
-                prePersist:   [ lifecycleFileUpload ]
-                preUpdate:    [ lifecycleFileUpload ]
+                prePersist: ['lifecycleFileUpload']
+                preUpdate:  ['lifecycleFileUpload']
 
-We then have the following methods in our ``Image`` class to manage file uploads:
+We then have the following methods in our ``Image`` class to manage file uploads::
 
-.. code-block:: php
+    // src/Entity/Image.php
 
-    <?php
-    // src/AppBundle/Bundle/Entity/Image.php
-
-    const SERVER_PATH_TO_IMAGE_FOLDER = '/server/path/to/images';
-
-    /**
-     * Unmapped property to handle file uploads
-     */
-    private $file;
-
-    /**
-     * Sets file.
-     *
-     * @param UploadedFile $file
-     */
-    public function setFile(UploadedFile $file = null)
+    class Image
     {
-        $this->file = $file;
-    }
+        const SERVER_PATH_TO_IMAGE_FOLDER = '/server/path/to/images';
 
-    /**
-     * Get file.
-     *
-     * @return UploadedFile
-     */
-    public function getFile()
-    {
-        return $this->file;
-    }
+        /**
+         * Unmapped property to handle file uploads
+         */
+        private $file;
 
-    /**
-     * Manages the copying of the file to the relevant place on the server
-     */
-    public function upload()
-    {
-        // the file property can be empty if the field is not required
-        if (null === $this->getFile()) {
-            return;
+        /**
+         * @param UploadedFile $file
+         */
+        public function setFile(UploadedFile $file = null)
+        {
+            $this->file = $file;
         }
 
-        // we use the original file name here but you should
-        // sanitize it at least to avoid any security issues
+        /**
+         * @return UploadedFile
+         */
+        public function getFile()
+        {
+            return $this->file;
+        }
 
-        // move takes the target directory and target filename as params
-        $this->getFile()->move(
-            self::SERVER_PATH_TO_IMAGE_FOLDER,
-            $this->getFile()->getClientOriginalName()
-        );
+        /**
+         * Manages the copying of the file to the relevant place on the server
+         */
+        public function upload()
+        {
+            // the file property can be empty if the field is not required
+            if (null === $this->getFile()) {
+                return;
+            }
 
-        // set the path property to the filename where you've saved the file
-        $this->filename = $this->getFile()->getClientOriginalName();
+           // we use the original file name here but you should
+           // sanitize it at least to avoid any security issues
 
-        // clean up the file property as you won't need it anymore
-        $this->setFile(null);
+           // move takes the target directory and target filename as params
+           $this->getFile()->move(
+               self::SERVER_PATH_TO_IMAGE_FOLDER,
+               $this->getFile()->getClientOriginalName()
+           );
+
+           // set the path property to the filename where you've saved the file
+           $this->filename = $this->getFile()->getClientOriginalName();
+
+           // clean up the file property as you won't need it anymore
+           $this->setFile(null);
+       }
+
+       /**
+        * Lifecycle callback to upload the file to the server.
+        */
+       public function lifecycleFileUpload()
+       {
+           $this->upload();
+       }
+
+       /**
+        * Updates the hash value to force the preUpdate and postUpdate events to fire.
+        */
+       public function refreshUpdated()
+       {
+          $this->setUpdated(new \DateTime());
+       }
+
+       // ... the rest of your class lives under here, including the generated fields
+       //     such as filename and updated
     }
-
-    /**
-     * Lifecycle callback to upload the file to the server
-     */
-    public function lifecycleFileUpload()
-    {
-        $this->upload();
-    }
-
-    /**
-     * Updates the hash value to force the preUpdate and postUpdate events to fire
-     */
-    public function refreshUpdated()
-    {
-        $this->setUpdated(new \DateTime());
-    }
-
-    // ... the rest of your class lives under here, including the generated fields
-    //     such as filename and updated
 
 When we upload a file to our Image, the file itself is transient and not persisted
 to our database (it is not part of our mapping). However, the lifecycle callbacks
@@ -152,8 +147,8 @@ trigger a call to ``Image::upload()`` which manages the actual copying of the
 uploaded file to the filesystem and updates the ``filename`` property of our Image,
 this filename field *is* persisted to the database.
 
-Most of the above is simply from the `uploading files with Doctrine and Symfony`_ cookbook
-entry. It is highly recommended reading!
+Most of the above is from the `uploading files with Doctrine and Symfony`_ cookbook entry.
+It is highly recommended to read it!
 
 Basic configuration - the Admin class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -163,23 +158,20 @@ We need to do two things in Sonata to enable file uploads:
 1. Add a file upload widget
 2. Ensure that the Image class' lifecycle events fire when we upload a file
 
-Both of these are straightforward when you know what to do:
+Both of these are straightforward when you know what to do::
 
-.. code-block:: php
+    // src/Admin/ImageAdmin.php
 
-    <?php
-    // src/AppBundle/Admin/ImageAdmin.php
+    use Symfony\Component\Form\Extension\Core\Type\FileType;
 
-    class ImageAdmin extends AbstractAdmin
+    final class ImageAdmin extends AbstractAdmin
     {
         protected function configureFormFields(FormMapper $formMapper)
         {
             $formMapper
-                ->add('file', 'file', [
+                ->add('file', FileType::class, [
                     'required' => false
                 ])
-
-                // ...
             ;
         }
 
@@ -225,49 +217,39 @@ Admin's lifecycle events to trigger the file management when needed.
 
 In this example we have a Page class which has three one-to-one Image relationships
 defined, linkedImage1 to linkedImage3. The PostAdmin class' form field configuration
-looks like this:
+looks like this::
 
-.. code-block:: php
+    // src/Admin/PostAdmin.php
 
-    <?php
-    // src/AppBundle/Admin/PostAdmin.php
+    use Sonata\AdminBundle\Form\Type\AdminType;
 
-    class PostAdmin extends AbstractAdmin
+    final class PostAdmin extends AbstractAdmin
     {
         protected function configureFormFields(FormMapper $formMapper)
         {
             $formMapper
-                ->add('linkedImage1', 'sonata_type_admin', [
-                    'delete' => false
+                ->add('linkedImage1', AdminType::class, [
+                    'delete' => false,
                 ])
-                ->add('linkedImage2', 'sonata_type_admin', [
-                    'delete' => false
+                ->add('linkedImage2', AdminType::class, [
+                    'delete' => false,
                 ])
-                ->add('linkedImage3', 'sonata_type_admin', [
-                    'delete' => false
+                ->add('linkedImage3', AdminType::class, [
+                    'delete' => false,
                 ])
-
-                // ...
             ;
         }
-
-        // ...
     }
 
-This is easy enough - we have embedded three fields, which will then use our ``ImageAdmin``
+This is enough - we embedded three fields, which will then use our ``ImageAdmin``
 class to determine which fields to show.
 
-In our PostAdmin we then have the following code to manage the relationships' lifecycles:
+In our ``PostAdmin`` we then have the following code to manage the relationships' lifecycles::
 
-.. code-block:: php
+    // src/Admin/PostAdmin.php
 
-    <?php
-    // src/AppBundle/Admin/PostAdmin.php
-
-    class PostAdmin extends AbstractAdmin
+    final class PostAdmin extends AbstractAdmin
     {
-        // ...
-
         public function prePersist($page)
         {
             $this->manageEmbeddedImageAdmins($page);
@@ -285,7 +267,7 @@ In our PostAdmin we then have the following code to manage the relationships' li
                 // detect embedded Admins that manage Images
                 if ($fieldDescription->getType() === 'sonata_type_admin' &&
                     ($associationMapping = $fieldDescription->getAssociationMapping()) &&
-                    $associationMapping['targetEntity'] === 'AppBundle\Entity\Image'
+                    $associationMapping['targetEntity'] === 'App\Entity\Image'
                 ) {
                     $getter = 'get'.$fieldName;
                     $setter = 'set'.$fieldName;
@@ -305,8 +287,6 @@ In our PostAdmin we then have the following code to manage the relationships' li
                 }
             }
         }
-
-        // ...
     }
 
 Here we loop through the fields of our PageAdmin and look for ones which are ``sonata_type_admin``
@@ -322,14 +302,12 @@ The final check is to prevent a glitch where Symfony tries to create blank Image
 has been entered in the form. We detect this case and null the relationship to stop this from
 happening.
 
-Notes
------
+.. note::
 
-If you are looking for richer media management functionality there is a complete SonataMediaBundle
-which caters to this need. It is documented online and is created and maintained by the same team
-as SonataAdmin.
+    If you are looking for richer media management functionality there is a complete ``SonataMediaBundle``
+    which caters to this need. It is documented online and is created and maintained by the same team
+    as SonataAdmin.
 
-To learn how to add an image preview to your ImageAdmin take a look at the related cookbook entry.
+To learn how to add an image preview to your ``ImageAdmin`` take a look at the related cookbook entry.
 
-
-.. _`uploading files with Doctrine and Symfony`: http://symfony.com/doc/current/cookbook/doctrine/file_uploads.html
+.. _`uploading files with Doctrine and Symfony`: https://symfony.com/doc/4.4/controller/upload_file.html

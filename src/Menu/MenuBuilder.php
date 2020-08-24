@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -20,6 +22,8 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Sonata menu builder.
+ *
+ * @final since sonata-project/admin-bundle 3.52
  *
  * @author Martin Hasoň <martin.hason@gmail.com>
  * @author Alexandru Furculita <alex@furculita.net>
@@ -75,7 +79,7 @@ class MenuBuilder
                 'sonata_admin' => true,
             ];
 
-            $menuProvider = isset($group['provider']) ? $group['provider'] : 'sonata_group_menu';
+            $menuProvider = $group['provider'] ?? 'sonata_group_menu';
             $subMenu = $this->provider->get(
                 $menuProvider,
                 [
@@ -89,7 +93,7 @@ class MenuBuilder
         }
 
         $event = new ConfigureMenuEvent($this->factory, $menu);
-        $this->eventDispatcher->dispatch(ConfigureMenuEvent::SIDEBAR, $event);
+        $this->eventDispatcher->dispatch($event, ConfigureMenuEvent::SIDEBAR);
 
         return $event->getMenu();
     }

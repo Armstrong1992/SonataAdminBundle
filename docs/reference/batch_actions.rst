@@ -2,15 +2,17 @@ Batch actions
 =============
 
 Batch actions are actions triggered on a set of selected objects. By default,
-Admins have a ``delete`` action which allows you to remove several entries at once.
+Admins have a ``delete`` action which allows you to remove several entries
+at once.
 
 Defining new actions
 --------------------
 
 To create a new custom batch action which appears in the list view follow these steps:
 
-Override ``configureBatchActions()`` in your ``Admin`` class to define the new batch actions
-by adding them to the ``$actions`` array. Each key represent a batch action and could contain these settings:
+Override ``configureBatchActions()`` in your ``Admin`` class to define
+the new batch actions by adding them to the ``$actions`` array.
+Each key represent a batch action and could contain these settings:
 
 - **label**: The name to use when offering this option to users, should be passed through the translator
   (default: the label is generated via the labelTranslatorStrategy)
@@ -18,19 +20,16 @@ by adding them to the ``$actions`` array. Each key represent a batch action and 
   (default: the translation domain of the admin)
 - **ask_confirmation**: defaults to true and means that the user will be asked
   for confirmation before the batch action is processed
+- **template**: Override ``ask_confirmation`` template for this specific action. This allows you
+  to specify different templates for each batch action that requires confirmation.
 
 For example, lets define a new ``merge`` action which takes a number of source items and
 merges them onto a single target item. It should only be available when two conditions are met:
 
 - the EDIT and DELETE routes exist for this Admin (have not been disabled)
-- the logged in administrator has EDIT and DELETE permissions
+- the logged in administrator has EDIT and DELETE permissions::
 
-.. code-block:: php
-
-    <?php
-    // in your Admin class
-
-    public function configureBatchActions($actions)
+    protected function configureBatchActions($actions)
     {
         if (
           $this->hasRoute('edit') && $this->hasAccess('edit') &&
@@ -39,7 +38,6 @@ merges them onto a single target item. It should only be available when two cond
             $actions['merge'] = [
                 'ask_confirmation' => true
             ];
-
         }
 
         return $actions;
@@ -52,18 +50,11 @@ The method ``batchAction<MyAction>`` will be executed to process your batch in y
 objects are passed to this method through a query argument which can be used to retrieve them.
 If for some reason it makes sense to perform your batch action without the default selection
 method (for example you defined another way, at template level, to select model at a lower
-granularity), the passed query is ``null``.
+granularity), the passed query is ``null``::
 
-.. note::
+    // src/Controller/CRUDController.php
 
-    You can check how to declare your own ``CRUDController`` class in the Architecture section.
-
-.. code-block:: php
-
-    <?php
-    // src/AppBundle/Controller/CRUDController.php
-
-    namespace AppBundle\Controller;
+    namespace App\Controller;
 
     use Sonata\AdminBundle\Controller\CRUDController as BaseController;
     use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
@@ -130,54 +121,43 @@ granularity), the passed query is ``null``.
         // ...
     }
 
+.. note::
+
+    You can check how to declare your own ``CRUDController`` class in the Architecture section.
 
 (Optional) Overriding the batch selection template
 --------------------------------------------------
 
-A merge action requires two kinds of selection: a set of source objects to merge from
-and a target object to merge into. By default, batch_actions only let you select one set
-of objects to manipulate. We can override this behavior by changing our list template
-(``list__batch.html.twig``) and adding a radio button to choose the target object.
+A merge action requires two kinds of selection: a set of source objects
+to merge from and a target object to merge into. By default, batch_actions
+only let you select one set of objects to manipulate. We can override this
+behavior by changing our list template (``list__batch.html.twig``) and adding
+a radio button to choose the target object.
 
 .. code-block:: html+jinja
 
-    {# src/AppBundle/Resources/views/CRUD/list__batch.html.twig #}
+    {# templates/bundles/SonataAdminBundle/CRUD/list__batch.html.twig #}
+
     {# see @SonataAdmin/CRUD/list__batch.html.twig for the current default template #}
 
-    {% extends admin.getTemplate('base_list_field') %}
+    {% extends get_admin_template('base_list_field', admin.code) %}
 
     {% block field %}
-        <input type="checkbox" name="idx[]" value="{{ admin.id(object) }}" />
+        <input type="checkbox" name="idx[]" value="{{ admin.id(object) }}"/>
 
         {# the new radio button #}
-        <input type="radio" name="targetId" value="{{ admin.id(object) }}" />
+        <input type="radio" name="targetId" value="{{ admin.id(object) }}"/>
     {% endblock %}
-
-
-And add this:
-
-.. code-block:: php
-
-    <?php
-    // src/AppBundle/AppBundle.php
-
-    public function getParent()
-    {
-        return 'SonataAdminBundle';
-    }
-
-See the `Symfony bundle overriding mechanism`_
-for further explanation of overriding bundle templates.
-
 
 (Optional) Overriding the default relevancy check function
 ----------------------------------------------------------
 
-By default, batch actions are not executed if no object was selected, and the user is notified of
-this lack of selection. If your custom batch action needs more complex logic to determine if
-an action can be performed or not, just define a ``batchAction<MyAction>IsRelevant`` method
-(e.g. ``batchActionMergeIsRelevant``) in your ``CRUDController`` class. This check is performed
-before the user is asked for confirmation, to make sure there is actually something to confirm.
+By default, batch actions are not executed if no object was selected, and
+the user is notified of this lack of selection. If your custom batch action
+needs more complex logic to determine if an action can be performed or not,
+define a ``batchAction<MyAction>IsRelevant`` method (e.g. ``batchActionMergeIsRelevant``)
+in your ``CRUDController`` class. This check is performed before the user is asked for confirmation,
+to make sure there is actually something to confirm.
 
 This method may return three different values:
 
@@ -185,14 +165,11 @@ This method may return three different values:
  - ``false``: Same as above, with the default "action aborted, no model selected" notification message.
  - ``string``: The batch action is not relevant given the current request parameters
    (for example the ``target`` is missing for a ``merge`` action).
-   The returned string is a message displayed to the user.
+   The returned string is a message displayed to the user::
 
-.. code-block:: php
+    // src/Controller/CRUDController.php
 
-    <?php
-    // src/AppBundle/Controller/CRUDController.php
-
-    namespace AppBundle\Controller;
+    namespace App\Controller;
 
     use Sonata\AdminBundle\Controller\CRUDController as BaseController;
     use Symfony\Component\HttpFoundation\Request;
@@ -227,20 +204,14 @@ This method may return three different values:
             // if at least one but not the target model is selected, a merge can be done.
             return count($selectedIds) > 0;
         }
-
-        // ...
     }
 
 (Optional) Executing a pre batch hook
 -------------------------------------
 
-In your admin class you can create a ``preBatchAction`` method to execute something before doing the batch action.
-The main purpose of this method is to alter the query or the list of selected ids.
-
-.. code-block:: php
-
-    <?php
-    // in your Admin class
+In your admin class you can create a ``preBatchAction`` method to execute
+something before doing the batch action. The main purpose of this method
+is to alter the query or the list of selected IDs::
 
     public function preBatchAction($actionName, ProxyQueryInterface $query, array & $idx, $allElements)
     {
@@ -252,5 +223,3 @@ The main purpose of this method is to alter the query or the list of selected id
 
         $query->setParameter('foo', $bar);
     }
-
-.. _Symfony bundle overriding mechanism: http://symfony.com/doc/current/cookbook/bundles/inheritance.html

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -12,38 +14,108 @@
 namespace Sonata\AdminBundle\Tests\DependencyInjection;
 
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\AbstractExtensionTestCase;
+use Sonata\AdminBundle\Admin\AdminHelper;
+use Sonata\AdminBundle\Admin\BreadcrumbsBuilder;
+use Sonata\AdminBundle\Admin\BreadcrumbsBuilderInterface;
+use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Bridge\Exporter\AdminExporter;
+use Sonata\AdminBundle\DependencyInjection\Configuration;
 use Sonata\AdminBundle\DependencyInjection\SonataAdminExtension;
+use Sonata\AdminBundle\Event\AdminEventExtension;
+use Sonata\AdminBundle\Filter\FilterFactory;
+use Sonata\AdminBundle\Filter\FilterFactoryInterface;
+use Sonata\AdminBundle\Filter\Persister\FilterPersisterInterface;
+use Sonata\AdminBundle\Filter\Persister\SessionFilterPersister;
+use Sonata\AdminBundle\Model\AuditManager;
+use Sonata\AdminBundle\Model\AuditManagerInterface;
+use Sonata\AdminBundle\Route\AdminPoolLoader;
+use Sonata\AdminBundle\Search\SearchHandler;
+use Sonata\AdminBundle\Templating\MutableTemplateRegistryInterface;
+use Sonata\AdminBundle\Templating\TemplateRegistry;
+use Sonata\AdminBundle\Translator\BCLabelTranslatorStrategy;
+use Sonata\AdminBundle\Translator\Extractor\AdminExtractor;
+use Sonata\AdminBundle\Translator\FormLabelTranslatorStrategy;
+use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
+use Sonata\AdminBundle\Translator\NativeLabelTranslatorStrategy;
+use Sonata\AdminBundle\Translator\NoopLabelTranslatorStrategy;
+use Sonata\AdminBundle\Translator\UnderscoreLabelTranslatorStrategy;
+use Sonata\AdminBundle\Twig\GlobalVariables;
+use Symfony\Component\Config\Definition\Processor;
 
 class SonataAdminExtensionTest extends AbstractExtensionTestCase
 {
     /**
-     * @group legacy
+     * @var array
      */
-    public function testContainerCompileWithJMSDiExtraBundle()
-    {
-        $this->container->setParameter('kernel.bundles', [
-            'JMSDiExtraBundle' => true,
-        ]);
+    private $defaultConfiguration = [];
 
-        $this->container->compile();
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->container->setParameter('kernel.bundles', []);
+
+        $this->defaultConfiguration = (new Processor())->processConfiguration(new Configuration(), []);
     }
 
-    public function testHasServiceDefinitionForLockExtension()
+    public function testHasCoreServicesAlias(): void
+    {
+        $this->load();
+
+        $this->assertContainerBuilderHasService(Pool::class);
+        $this->assertContainerBuilderHasService(AdminPoolLoader::class);
+        $this->assertContainerBuilderHasService(AdminHelper::class);
+        $this->assertContainerBuilderHasService(FilterFactory::class);
+        $this->assertContainerBuilderHasService(
+            FilterFactoryInterface::class,
+            FilterFactory::class
+        );
+        $this->assertContainerBuilderHasService(BreadcrumbsBuilder::class);
+        $this->assertContainerBuilderHasService(
+            BreadcrumbsBuilderInterface::class,
+            BreadcrumbsBuilder::class
+        );
+        $this->assertContainerBuilderHasService(BCLabelTranslatorStrategy::class);
+        $this->assertContainerBuilderHasService(NativeLabelTranslatorStrategy::class);
+        $this->assertContainerBuilderHasService(
+            LabelTranslatorStrategyInterface::class,
+            NativeLabelTranslatorStrategy::class
+        );
+        $this->assertContainerBuilderHasService(NoopLabelTranslatorStrategy::class);
+        $this->assertContainerBuilderHasService(UnderscoreLabelTranslatorStrategy::class);
+        $this->assertContainerBuilderHasService(FormLabelTranslatorStrategy::class);
+        $this->assertContainerBuilderHasService(AuditManager::class);
+        $this->assertContainerBuilderHasService(AuditManagerInterface::class, AuditManager::class);
+        $this->assertContainerBuilderHasService(SearchHandler::class);
+        $this->assertContainerBuilderHasService(AdminEventExtension::class);
+        $this->assertContainerBuilderHasService(GlobalVariables::class);
+        $this->assertContainerBuilderHasService(SessionFilterPersister::class);
+        $this->assertContainerBuilderHasService(
+            FilterPersisterInterface::class,
+            SessionFilterPersister::class
+        );
+        $this->assertContainerBuilderHasService(TemplateRegistry::class);
+        $this->assertContainerBuilderHasService(
+            MutableTemplateRegistryInterface::class,
+            TemplateRegistry::class
+        );
+        $this->assertContainerBuilderHasService(AdminExtractor::class);
+    }
+
+    public function testHasServiceDefinitionForLockExtension(): void
     {
         $this->container->setParameter('kernel.bundles', []);
         $this->load(['options' => ['lock_protection' => true]]);
         $this->assertContainerBuilderHasService('sonata.admin.lock.extension');
     }
 
-    public function testNotHasServiceDefinitionForLockExtension()
+    public function testNotHasServiceDefinitionForLockExtension(): void
     {
         $this->container->setParameter('kernel.bundles', []);
         $this->load(['options' => ['lock_protection' => false]]);
         $this->assertContainerBuilderNotHasService('sonata.admin.lock.extension');
     }
 
-    public function testLoadsExporterServiceDefinitionWhenExporterBundleIsRegistered()
+    public function testLoadsExporterServiceDefinitionWhenExporterBundleIsRegistered(): void
     {
         $this->container->setParameter('kernel.bundles', ['SonataExporterBundle' => 'whatever']);
         $this->load();
@@ -53,7 +125,7 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
         );
     }
 
-    public function testHasSecurityRoleParameters()
+    public function testHasSecurityRoleParameters(): void
     {
         $this->container->setParameter('kernel.bundles', []);
         $this->load();
@@ -62,214 +134,219 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasParameter('sonata.admin.configuration.security.role_super_admin');
     }
 
-    public function testExtraStylesheetsGetAdded()
+    public function testHasDefaultServiceParameters(): void
     {
         $this->container->setParameter('kernel.bundles', []);
+        $this->load();
+
+        $this->assertContainerBuilderHasParameter('sonata.admin.configuration.default_group');
+        $this->assertContainerBuilderHasParameter('sonata.admin.configuration.default_label_catalogue');
+        $this->assertContainerBuilderHasParameter('sonata.admin.configuration.default_icon');
+    }
+
+    public function testExtraStylesheetsGetAdded(): void
+    {
+        $this->container->setParameter('kernel.bundles', []);
+
+        $extraStylesheets = ['foo/bar.css', 'bar/quux.css'];
         $this->load([
             'assets' => [
-                'extra_stylesheets' => [
-                    'foo/bar.css',
-                    'bar/quux.css',
-                ],
+                'extra_stylesheets' => $extraStylesheets,
             ],
         ]);
+
         $stylesheets = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['stylesheets'];
 
-        $this->assertEquals($stylesheets, [
-            'bundles/sonatacore/vendor/bootstrap/dist/css/bootstrap.min.css',
-            'bundles/sonatacore/vendor/components-font-awesome/css/font-awesome.min.css',
-            'bundles/sonatacore/vendor/ionicons/css/ionicons.min.css',
-            'bundles/sonataadmin/vendor/admin-lte/dist/css/AdminLTE.min.css',
+        $this->assertSame(
+            array_merge($this->defaultConfiguration['assets']['stylesheets'], $extraStylesheets),
+            $stylesheets
+        );
+    }
+
+    public function testRemoveStylesheetsGetRemoved(): void
+    {
+        $this->container->setParameter('kernel.bundles', []);
+        $removeStylesheets = [
             'bundles/sonataadmin/vendor/admin-lte/dist/css/skins/skin-black.min.css',
-            'bundles/sonataadmin/vendor/iCheck/skins/square/blue.css',
-            'bundles/sonatacore/vendor/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css',
             'bundles/sonataadmin/vendor/jqueryui/themes/base/jquery-ui.css',
-            'bundles/sonatacore/vendor/select2/select2.css',
-            'bundles/sonatacore/vendor/select2-bootstrap-css/select2-bootstrap.min.css',
-            'bundles/sonataadmin/vendor/x-editable/dist/bootstrap3-editable/css/bootstrap-editable.css',
-            'bundles/sonataadmin/css/styles.css',
-            'bundles/sonataadmin/css/layout.css',
-            'bundles/sonataadmin/css/tree.css',
-            'foo/bar.css',
-            'bar/quux.css',
-        ]);
-    }
-
-    public function testRemoveStylesheetsGetRemoved()
-    {
-        $this->container->setParameter('kernel.bundles', []);
+        ];
         $this->load([
             'assets' => [
-                'remove_stylesheets' => [
-                    'bundles/sonataadmin/vendor/admin-lte/dist/css/skins/skin-black.min.css',
-                    'bundles/sonataadmin/vendor/jqueryui/themes/base/jquery-ui.css',
-                ],
+                'remove_stylesheets' => $removeStylesheets,
             ],
         ]);
-
         $stylesheets = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['stylesheets'];
 
-        $this->assertEquals($stylesheets, [
-            'bundles/sonatacore/vendor/bootstrap/dist/css/bootstrap.min.css',
-            'bundles/sonatacore/vendor/components-font-awesome/css/font-awesome.min.css',
-            'bundles/sonatacore/vendor/ionicons/css/ionicons.min.css',
-            'bundles/sonataadmin/vendor/admin-lte/dist/css/AdminLTE.min.css',
-            'bundles/sonataadmin/vendor/iCheck/skins/square/blue.css',
-            'bundles/sonatacore/vendor/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css',
-            'bundles/sonatacore/vendor/select2/select2.css',
-            'bundles/sonatacore/vendor/select2-bootstrap-css/select2-bootstrap.min.css',
-            'bundles/sonataadmin/vendor/x-editable/dist/bootstrap3-editable/css/bootstrap-editable.css',
-            'bundles/sonataadmin/css/styles.css',
-            'bundles/sonataadmin/css/layout.css',
-            'bundles/sonataadmin/css/tree.css',
-        ]);
+        $this->assertSame(
+            array_values(
+                array_diff($this->defaultConfiguration['assets']['stylesheets'], $removeStylesheets)
+            ),
+            $stylesheets
+        );
     }
 
-    public function testExtraJavascriptsGetAdded()
+    public function testExtraJavascriptsGetAdded(): void
     {
         $this->container->setParameter('kernel.bundles', []);
+        $extraJavascripts = ['foo/bar.js', 'bar/quux.js'];
         $this->load([
             'assets' => [
-                'extra_javascripts' => [
-                    'foo/bar.js',
-                    'bar/quux.js',
-                ],
+                'extra_javascripts' => $extraJavascripts,
             ],
         ]);
         $javascripts = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['javascripts'];
 
-        $this->assertEquals($javascripts, [
-            'bundles/sonatacore/vendor/jquery/dist/jquery.min.js',
-            'bundles/sonataadmin/vendor/jquery.scrollTo/jquery.scrollTo.min.js',
-            'bundles/sonatacore/vendor/moment/min/moment.min.js',
-            'bundles/sonataadmin/vendor/jqueryui/ui/minified/jquery-ui.min.js',
-            'bundles/sonataadmin/vendor/jqueryui/ui/minified/i18n/jquery-ui-i18n.min.js',
-            'bundles/sonatacore/vendor/bootstrap/dist/js/bootstrap.min.js',
-            'bundles/sonatacore/vendor/eonasdan-bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js',
-            'bundles/sonataadmin/vendor/jquery-form/jquery.form.js',
-            'bundles/sonataadmin/jquery/jquery.confirmExit.js',
-            'bundles/sonataadmin/vendor/x-editable/dist/bootstrap3-editable/js/bootstrap-editable.min.js',
-            'bundles/sonatacore/vendor/select2/select2.min.js',
-            'bundles/sonataadmin/vendor/admin-lte/dist/js/app.min.js',
-            'bundles/sonataadmin/vendor/iCheck/icheck.min.js',
-            'bundles/sonataadmin/vendor/slimScroll/jquery.slimscroll.min.js',
-            'bundles/sonataadmin/vendor/waypoints/lib/jquery.waypoints.min.js',
-            'bundles/sonataadmin/vendor/waypoints/lib/shortcuts/sticky.min.js',
+        $this->assertSame(
+            array_merge($this->defaultConfiguration['assets']['javascripts'], $extraJavascripts),
+            $javascripts
+        );
+    }
+
+    public function testRemoveJavascriptsGetRemoved(): void
+    {
+        $this->container->setParameter('kernel.bundles', []);
+        $removeJavascripts = [
             'bundles/sonataadmin/vendor/readmore-js/readmore.min.js',
-            'bundles/sonataadmin/vendor/masonry/dist/masonry.pkgd.min.js',
-            'bundles/sonataadmin/Admin.js',
-            'bundles/sonataadmin/treeview.js',
-            'bundles/sonataadmin/sidebar.js',
-            'foo/bar.js',
-            'bar/quux.js',
-        ]);
-    }
-
-    public function testRemoveJavascriptsGetRemoved()
-    {
-        $this->container->setParameter('kernel.bundles', []);
+            'bundles/sonataadmin/jquery/jquery.confirmExit.js',
+        ];
         $this->load([
             'assets' => [
-                'remove_javascripts' => [
-                    'bundles/sonataadmin/vendor/readmore-js/readmore.min.js',
-                    'bundles/sonataadmin/jquery/jquery.confirmExit.js',
-                ],
+                'remove_javascripts' => $removeJavascripts,
             ],
         ]);
         $javascripts = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['javascripts'];
 
-        $this->assertEquals($javascripts, [
-            'bundles/sonatacore/vendor/jquery/dist/jquery.min.js',
-            'bundles/sonataadmin/vendor/jquery.scrollTo/jquery.scrollTo.min.js',
-            'bundles/sonatacore/vendor/moment/min/moment.min.js',
-            'bundles/sonataadmin/vendor/jqueryui/ui/minified/jquery-ui.min.js',
-            'bundles/sonataadmin/vendor/jqueryui/ui/minified/i18n/jquery-ui-i18n.min.js',
-            'bundles/sonatacore/vendor/bootstrap/dist/js/bootstrap.min.js',
-            'bundles/sonatacore/vendor/eonasdan-bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js',
-            'bundles/sonataadmin/vendor/jquery-form/jquery.form.js',
-            'bundles/sonataadmin/vendor/x-editable/dist/bootstrap3-editable/js/bootstrap-editable.min.js',
-            'bundles/sonatacore/vendor/select2/select2.min.js',
-            'bundles/sonataadmin/vendor/admin-lte/dist/js/app.min.js',
-            'bundles/sonataadmin/vendor/iCheck/icheck.min.js',
-            'bundles/sonataadmin/vendor/slimScroll/jquery.slimscroll.min.js',
-            'bundles/sonataadmin/vendor/waypoints/lib/jquery.waypoints.min.js',
-            'bundles/sonataadmin/vendor/waypoints/lib/shortcuts/sticky.min.js',
-            'bundles/sonataadmin/vendor/masonry/dist/masonry.pkgd.min.js',
-            'bundles/sonataadmin/Admin.js',
-            'bundles/sonataadmin/treeview.js',
-            'bundles/sonataadmin/sidebar.js',
-        ]);
+        $this->assertSame(
+            array_values(
+                array_diff($this->defaultConfiguration['assets']['javascripts'], $removeJavascripts)
+            ),
+            $javascripts
+        );
     }
 
-    public function testAssetsCanBeAddedAndRemoved()
+    public function testAssetsCanBeAddedAndRemoved(): void
     {
         $this->container->setParameter('kernel.bundles', []);
+        $extraStylesheets = ['foo/bar.css', 'bar/quux.css'];
+        $extraJavascripts = ['foo/bar.js', 'bar/quux.js'];
+        $removeStylesheets = [
+            'bundles/sonataadmin/vendor/admin-lte/dist/css/skins/skin-black.min.css',
+            'bundles/sonataadmin/vendor/jqueryui/themes/base/jquery-ui.css',
+        ];
+        $removeJavascripts = [
+            'bundles/sonataadmin/vendor/readmore-js/readmore.min.js',
+            'bundles/sonataadmin/jquery/jquery.confirmExit.js',
+        ];
         $this->load([
             'assets' => [
-                'extra_stylesheets' => [
-                    'foo/bar.css',
-                    'bar/quux.css',
-                ],
-                'remove_stylesheets' => [
-                    'bundles/sonataadmin/vendor/admin-lte/dist/css/skins/skin-black.min.css',
-                    'bundles/sonataadmin/vendor/jqueryui/themes/base/jquery-ui.css',
-                ],
-                'extra_javascripts' => [
-                    'foo/bar.js',
-                    'bar/quux.js',
-                ],
-                'remove_javascripts' => [
-                    'bundles/sonataadmin/vendor/readmore-js/readmore.min.js',
-                    'bundles/sonataadmin/jquery/jquery.confirmExit.js',
-                ],
+                'extra_stylesheets' => $extraStylesheets,
+                'remove_stylesheets' => $removeStylesheets,
+                'extra_javascripts' => $extraJavascripts,
+                'remove_javascripts' => $removeJavascripts,
             ],
         ]);
-        $stylesheets = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['stylesheets'];
+        $stylesheets = $this->container
+            ->getDefinition('sonata.admin.pool')->getArgument(3)['stylesheets']
+        ;
+
+        $this->assertSame(
+            array_merge(
+                array_diff($this->defaultConfiguration['assets']['stylesheets'], $removeStylesheets),
+                $extraStylesheets
+            ),
+            $stylesheets
+        );
+
         $javascripts = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['javascripts'];
 
-        $this->assertEquals($stylesheets, [
-            'bundles/sonatacore/vendor/bootstrap/dist/css/bootstrap.min.css',
-            'bundles/sonatacore/vendor/components-font-awesome/css/font-awesome.min.css',
-            'bundles/sonatacore/vendor/ionicons/css/ionicons.min.css',
-            'bundles/sonataadmin/vendor/admin-lte/dist/css/AdminLTE.min.css',
-            'bundles/sonataadmin/vendor/iCheck/skins/square/blue.css',
-            'bundles/sonatacore/vendor/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css',
-            'bundles/sonatacore/vendor/select2/select2.css',
-            'bundles/sonatacore/vendor/select2-bootstrap-css/select2-bootstrap.min.css',
-            'bundles/sonataadmin/vendor/x-editable/dist/bootstrap3-editable/css/bootstrap-editable.css',
-            'bundles/sonataadmin/css/styles.css',
-            'bundles/sonataadmin/css/layout.css',
-            'bundles/sonataadmin/css/tree.css',
-            'foo/bar.css',
-            'bar/quux.css',
-        ]);
-
-        $this->assertEquals($javascripts, [
-            'bundles/sonatacore/vendor/jquery/dist/jquery.min.js',
-            'bundles/sonataadmin/vendor/jquery.scrollTo/jquery.scrollTo.min.js',
-            'bundles/sonatacore/vendor/moment/min/moment.min.js',
-            'bundles/sonataadmin/vendor/jqueryui/ui/minified/jquery-ui.min.js',
-            'bundles/sonataadmin/vendor/jqueryui/ui/minified/i18n/jquery-ui-i18n.min.js',
-            'bundles/sonatacore/vendor/bootstrap/dist/js/bootstrap.min.js',
-            'bundles/sonatacore/vendor/eonasdan-bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js',
-            'bundles/sonataadmin/vendor/jquery-form/jquery.form.js',
-            'bundles/sonataadmin/vendor/x-editable/dist/bootstrap3-editable/js/bootstrap-editable.min.js',
-            'bundles/sonatacore/vendor/select2/select2.min.js',
-            'bundles/sonataadmin/vendor/admin-lte/dist/js/app.min.js',
-            'bundles/sonataadmin/vendor/iCheck/icheck.min.js',
-            'bundles/sonataadmin/vendor/slimScroll/jquery.slimscroll.min.js',
-            'bundles/sonataadmin/vendor/waypoints/lib/jquery.waypoints.min.js',
-            'bundles/sonataadmin/vendor/waypoints/lib/shortcuts/sticky.min.js',
-            'bundles/sonataadmin/vendor/masonry/dist/masonry.pkgd.min.js',
-            'bundles/sonataadmin/Admin.js',
-            'bundles/sonataadmin/treeview.js',
-            'bundles/sonataadmin/sidebar.js',
-            'foo/bar.js',
-            'bar/quux.js',
-        ]);
+        $this->assertSame(
+            array_merge(
+                array_diff($this->defaultConfiguration['assets']['javascripts'], $removeJavascripts),
+                $extraJavascripts
+            ),
+            $javascripts
+        );
     }
 
-    protected function getContainerExtensions()
+    public function testDefaultTemplates(): void
+    {
+        $this->load();
+
+        $this->assertSame([
+            'user_block' => '@SonataAdmin/Core/user_block.html.twig',
+            'add_block' => '@SonataAdmin/Core/add_block.html.twig',
+            'layout' => '@SonataAdmin/standard_layout.html.twig',
+            'ajax' => '@SonataAdmin/ajax_layout.html.twig',
+            'dashboard' => '@SonataAdmin/Core/dashboard.html.twig',
+            'search' => '@SonataAdmin/Core/search.html.twig',
+            'list' => '@SonataAdmin/CRUD/list.html.twig',
+            'filter' => '@SonataAdmin/Form/filter_admin_fields.html.twig',
+            'show' => '@SonataAdmin/CRUD/show.html.twig',
+            'show_compare' => '@SonataAdmin/CRUD/show_compare.html.twig',
+            'edit' => '@SonataAdmin/CRUD/edit.html.twig',
+            'preview' => '@SonataAdmin/CRUD/preview.html.twig',
+            'history' => '@SonataAdmin/CRUD/history.html.twig',
+            'acl' => '@SonataAdmin/CRUD/acl.html.twig',
+            'history_revision_timestamp' => '@SonataAdmin/CRUD/history_revision_timestamp.html.twig',
+            'action' => '@SonataAdmin/CRUD/action.html.twig',
+            'select' => '@SonataAdmin/CRUD/list__select.html.twig',
+            'list_block' => '@SonataAdmin/Block/block_admin_list.html.twig',
+            'search_result_block' => '@SonataAdmin/Block/block_search_result.html.twig',
+            'short_object_description' => '@SonataAdmin/Helper/short-object-description.html.twig',
+            'delete' => '@SonataAdmin/CRUD/delete.html.twig',
+            'batch' => '@SonataAdmin/CRUD/list__batch.html.twig',
+            'batch_confirmation' => '@SonataAdmin/CRUD/batch_confirmation.html.twig',
+            'inner_list_row' => '@SonataAdmin/CRUD/list_inner_row.html.twig',
+            'outer_list_rows_mosaic' => '@SonataAdmin/CRUD/list_outer_rows_mosaic.html.twig',
+            'outer_list_rows_list' => '@SonataAdmin/CRUD/list_outer_rows_list.html.twig',
+            'outer_list_rows_tree' => '@SonataAdmin/CRUD/list_outer_rows_tree.html.twig',
+            'base_list_field' => '@SonataAdmin/CRUD/base_list_field.html.twig',
+            'pager_links' => '@SonataAdmin/Pager/links.html.twig',
+            'pager_results' => '@SonataAdmin/Pager/results.html.twig',
+            'tab_menu_template' => '@SonataAdmin/Core/tab_menu_template.html.twig',
+            'knp_menu_template' => '@SonataAdmin/Menu/sonata_menu.html.twig',
+            'action_create' => '@SonataAdmin/CRUD/dashboard__action_create.html.twig',
+            'button_acl' => '@SonataAdmin/Button/acl_button.html.twig',
+            'button_create' => '@SonataAdmin/Button/create_button.html.twig',
+            'button_edit' => '@SonataAdmin/Button/edit_button.html.twig',
+            'button_history' => '@SonataAdmin/Button/history_button.html.twig',
+            'button_list' => '@SonataAdmin/Button/list_button.html.twig',
+            'button_show' => '@SonataAdmin/Button/show_button.html.twig',
+        ], $this->container->getParameter('sonata.admin.configuration.templates'));
+    }
+
+    public function testLoadIntlTemplate(): void
+    {
+        $bundlesWithSonataIntlBundle = array_merge($this->container->getParameter('kernel.bundles'), ['SonataIntlBundle' => true]);
+        $this->container->setParameter('kernel.bundles', $bundlesWithSonataIntlBundle);
+        $this->load();
+        $templates = $this->container->getParameter('sonata.admin.configuration.templates');
+        $this->assertSame('@SonataIntl/CRUD/history_revision_timestamp.html.twig', $templates['history_revision_timestamp']);
+    }
+
+    public function testLegacyTextExtensionConfiguration(): void
+    {
+        $this->load();
+
+        $this->assertTrue($this->container->getParameter('sonata.admin.configuration.legacy_twig_text_extension'));
+        $this->assertContainerBuilderHasService('sonata.string.twig.extension');
+
+        $this->assertSame(
+            'sonata.deprecated_text.twig.extension',
+            (string) $this->container->getDefinition('sonata.string.twig.extension')->getArgument(0)
+        );
+
+        $this->load([
+            'options' => [
+                'legacy_twig_text_extension' => false,
+            ],
+        ]);
+
+        $this->assertContainerBuilderHasService('sonata.string.twig.extension');
+        $this->assertNull($this->container->getDefinition('sonata.string.twig.extension')->getArgument(0));
+    }
+
+    protected function getContainerExtensions(): array
     {
         return [new SonataAdminExtension()];
     }

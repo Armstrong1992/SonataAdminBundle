@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -23,10 +25,17 @@ use Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface;
 use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
 use Symfony\Component\Translation\TranslatorInterface;
 
-final class AdminExtractor implements ExtractorInterface, TranslatorInterface, SecurityHandlerInterface, LabelTranslatorStrategyInterface
+/**
+ * NEXT_MAJOR: Remove this class and the jms/translation-bundle dev dependency.
+ *
+ * @deprecated since sonata-project/admin-bundle 3.72. Use `translation:update` Symfony command instead.
+ *
+ * @final since sonata-project/admin-bundle 3.52
+ */
+class AdminExtractor implements ExtractorInterface, TranslatorInterface, SecurityHandlerInterface, LabelTranslatorStrategyInterface
 {
     /**
-     * @var LoggerInterface
+     * @var LoggerInterface|null
      */
     private $logger;
 
@@ -36,17 +45,17 @@ final class AdminExtractor implements ExtractorInterface, TranslatorInterface, S
     private $adminPool;
 
     /**
-     * @var string|bool
+     * @var MessageCatalogue|bool
      */
     private $catalogue;
 
     /**
-     * @var string|bool
+     * @var TranslatorInterface|bool
      */
     private $translator;
 
     /**
-     * @var string|bool
+     * @var LabelTranslatorStrategyInterface|bool
      */
     private $labelStrategy;
 
@@ -60,7 +69,7 @@ final class AdminExtractor implements ExtractorInterface, TranslatorInterface, S
      */
     private $breadcrumbsBuilder;
 
-    public function __construct(Pool $adminPool, LoggerInterface $logger = null)
+    public function __construct(Pool $adminPool, ?LoggerInterface $logger = null)
     {
         $this->logger = $logger;
         $this->adminPool = $adminPool;
@@ -80,7 +89,7 @@ final class AdminExtractor implements ExtractorInterface, TranslatorInterface, S
     /**
      * NEXT_MAJOR : use a constructor argument instead.
      */
-    public function setBreadcrumbsBuilder(BreadcrumbsBuilderInterface $breadcrumbsBuilder)
+    final public function setBreadcrumbsBuilder(BreadcrumbsBuilderInterface $breadcrumbsBuilder)
     {
         $this->breadcrumbsBuilder = $breadcrumbsBuilder;
     }
@@ -120,6 +129,10 @@ final class AdminExtractor implements ExtractorInterface, TranslatorInterface, S
             $admin->setSecurityHandler($this);
             $admin->setLabelTranslatorStrategy($this);
 
+            //            foreach ($admin->getChildren() as $child) {
+            //                $child->setTranslator($this);
+            //            }
+
             // call the different public method
             $methods = [
                 'getShow',
@@ -138,11 +151,7 @@ final class AdminExtractor implements ExtractorInterface, TranslatorInterface, S
             ];
 
             if ($this->logger) {
-                $this->logger->info(sprintf(
-                    'Retrieving message from admin:%s - class: %s',
-                    $admin->getCode(),
-                    get_class($admin)
-                ));
+                $this->logger->info(sprintf('Retrieving message from admin:%s - class: %s', $admin->getCode(), \get_class($admin)));
             }
 
             foreach ($methods as $method) {
@@ -150,11 +159,7 @@ final class AdminExtractor implements ExtractorInterface, TranslatorInterface, S
                     $admin->$method();
                 } catch (\Exception $e) {
                     if ($this->logger) {
-                        $this->logger->error(sprintf(
-                            'ERROR : admin:%s - Raise an exception : %s',
-                            $admin->getCode(),
-                            $e->getMessage()
-                        ));
+                        $this->logger->error(sprintf('ERROR : admin:%s - Raise an exception : %s', $admin->getCode(), $e->getMessage()));
                     }
 
                     throw $e;
@@ -241,25 +246,21 @@ final class AdminExtractor implements ExtractorInterface, TranslatorInterface, S
         return $label;
     }
 
-    /**
-     * @param string $id
-     *
-     * @return AdminInterface
-     */
-    private function getAdmin($id)
+    private function getAdmin(string $id): AdminInterface
     {
-        return $this->adminPool->getContainer()->get($id);
+        $admin = $this->adminPool->getContainer()->get($id);
+        \assert($admin instanceof AdminInterface);
+
+        return $admin;
     }
 
-    /**
-     * @param string $id
-     * @param string $domain
-     */
-    private function addMessage($id, $domain)
+    private function addMessage(string $id, string $domain): void
     {
         $message = new Message($id, $domain);
 
-        $trace = debug_backtrace(false);
+        //        $this->logger->debug(sprintf('extract: %s - domain:%s', $id, $domain));
+
+        $trace = debug_backtrace(0);
         if (isset($trace[1]['file'])) {
             $message->addSource(new FileSource($trace[1]['file']));
         }

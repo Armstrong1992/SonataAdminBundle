@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -17,8 +19,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
 use Symfony\Component\Security\Acl\Domain\RoleSecurityIdentity;
 use Symfony\Component\Security\Acl\Model\AclInterface;
+use Symfony\Component\Security\Acl\Model\MutableAclInterface;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class AdminAclManipulator implements AdminAclManipulatorInterface
@@ -70,7 +75,14 @@ class AdminAclManipulator implements AdminAclManipulatorInterface
         AclSecurityHandlerInterface $securityHandler,
         array $roleInformation = []
     ) {
-        if (count($securityHandler->getAdminPermissions()) > 0) {
+        if (!$acl instanceof MutableAclInterface) {
+            throw new \TypeError(sprintf(
+                'Argument 2 passed to "%s()" must implement "%s".',
+                __METHOD__,
+                MutableAclInterface::class
+            ));
+        }
+        if (\count($securityHandler->getAdminPermissions()) > 0) {
             $builder = new $this->maskBuilderClass();
 
             foreach ($roleInformation as $role => $permissions) {
@@ -79,13 +91,13 @@ class AdminAclManipulator implements AdminAclManipulatorInterface
 
                 foreach ($permissions as $permission) {
                     // add only the admin permissions
-                    if (in_array($permission, $securityHandler->getAdminPermissions())) {
+                    if (\in_array($permission, $securityHandler->getAdminPermissions(), true)) {
                         $builder->add($permission);
                         $roleAdminPermissions[] = $permission;
                     }
                 }
 
-                if (count($roleAdminPermissions) > 0) {
+                if (\count($roleAdminPermissions) > 0) {
                     if (false === $aceIndex) {
                         $acl->insertClassAce(new RoleSecurityIdentity($role), $builder->get());
                         $action = 'add';

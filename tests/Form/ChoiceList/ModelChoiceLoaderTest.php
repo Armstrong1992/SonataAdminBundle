@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -18,14 +20,14 @@ use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\Foo;
 
 class ModelChoiceLoaderTest extends TestCase
 {
-    private $modelManager = null;
+    private $modelManager;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
     }
 
-    public function testLoadFromEntityWithSamePropertyValues()
+    public function testLoadFromEntityWithSamePropertyValues(): void
     {
         $fooA = new Foo();
         $fooA->setBar(1);
@@ -37,13 +39,13 @@ class ModelChoiceLoaderTest extends TestCase
 
         $this->modelManager->expects($this->once())
             ->method('findBy')
-            ->will($this->returnValue([$fooA, $fooB]));
+            ->willReturn([$fooA, $fooB]);
 
-        $this->modelManager->expects($this->any())
+        $this->modelManager
             ->method('getIdentifierValues')
-            ->will($this->returnCallback(function (Foo $foo) {
+            ->willReturnCallback(static function (Foo $foo) {
                 return [$foo->getBar()];
-            }));
+            });
 
         $modelChoiceLoader = new ModelChoiceLoader(
             $this->modelManager,

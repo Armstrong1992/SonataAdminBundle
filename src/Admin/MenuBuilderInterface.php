@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -29,7 +31,7 @@ interface MenuBuilderInterface
      *
      * @deprecated Use buildTabMenu instead
      */
-    public function buildSideMenu($action, AdminInterface $childAdmin = null);
+    public function buildSideMenu($action, ?AdminInterface $childAdmin = null);
 
     /**
      * Build the tab menu related to the current action.
@@ -38,5 +40,5 @@ interface MenuBuilderInterface
      *
      * @return ItemInterface|bool
      */
-    public function buildTabMenu($action, AdminInterface $childAdmin = null);
+    public function buildTabMenu($action, ?AdminInterface $childAdmin = null);
 }

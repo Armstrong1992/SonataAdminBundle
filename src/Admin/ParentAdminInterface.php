@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -46,7 +48,7 @@ interface ParentAdminInterface
      *
      * @param string $code
      *
-     * @return AdminInterface|null
+     * @return AdminInterface|null // NEXT_MAJOR: Return AdminInterface
      */
     public function getChild($code);
 }

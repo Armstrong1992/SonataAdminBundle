@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -19,6 +21,8 @@ use Sonata\AdminBundle\Mapper\BaseMapper;
 /**
  * This class is use to simulate the Form API.
  *
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class DatagridMapper extends BaseMapper
@@ -27,6 +31,11 @@ class DatagridMapper extends BaseMapper
      * @var DatagridInterface
      */
     protected $datagrid;
+
+    /**
+     * @var DatagridBuilderInterface
+     */
+    protected $builder;
 
     public function __construct(
         DatagridBuilderInterface $datagridBuilder,
@@ -38,12 +47,12 @@ class DatagridMapper extends BaseMapper
     }
 
     /**
-     * @param string $name
-     * @param string $type
-     * @param string $fieldType
-     * @param array  $fieldOptions
+     * @param FieldDescriptionInterface|string $name
+     * @param string|null                      $type
+     * @param string|null                      $fieldType
+     * @param array|null                       $fieldOptions
      *
-     * @throws \RuntimeException
+     * @throws \LogicException
      *
      * @return DatagridMapper
      */
@@ -55,7 +64,7 @@ class DatagridMapper extends BaseMapper
         $fieldOptions = null,
         array $fieldDescriptionOptions = []
     ) {
-        if (is_array($fieldOptions)) {
+        if (\is_array($fieldOptions)) {
             $filterOptions['field_options'] = $fieldOptions;
         }
 
@@ -66,9 +75,12 @@ class DatagridMapper extends BaseMapper
         if ($name instanceof FieldDescriptionInterface) {
             $fieldDescription = $name;
             $fieldDescription->mergeOptions($filterOptions);
-        } elseif (is_string($name)) {
+        } elseif (\is_string($name)) {
             if ($this->admin->hasFilterFieldDescription($name)) {
-                throw new \RuntimeException(sprintf('Duplicate field name "%s" in datagrid mapper. Names should be unique.', $name));
+                throw new \LogicException(sprintf(
+                    'Duplicate field name "%s" in datagrid mapper. Names should be unique.',
+                    $name
+                ));
             }
 
             if (!isset($filterOptions['field_name'])) {
@@ -81,14 +93,16 @@ class DatagridMapper extends BaseMapper
                 array_merge($filterOptions, $fieldDescriptionOptions)
             );
         } else {
-            throw new \RuntimeException(
+            throw new \TypeError(
                 'Unknown field name in datagrid mapper.'
                 .' Field name should be either of FieldDescriptionInterface interface or string.'
             );
         }
 
-        // add the field with the DatagridBuilder
-        $this->builder->addFilter($this->datagrid, $type, $fieldDescription, $this->admin);
+        if (!isset($fieldDescriptionOptions['role']) || $this->admin->isGranted($fieldDescriptionOptions['role'])) {
+            // add the field with the DatagridBuilder
+            $this->builder->addFilter($this->datagrid, $type, $fieldDescription, $this->admin);
+        }
 
         return $this;
     }

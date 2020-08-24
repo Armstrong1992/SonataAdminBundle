@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -12,6 +14,8 @@
 namespace Sonata\AdminBundle\Command;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class Validators
@@ -19,7 +23,7 @@ class Validators
     /**
      * @static
      *
-     * @param string $username
+     * @param string|null $username
      *
      * @throws \InvalidArgumentException
      *
@@ -45,17 +49,17 @@ class Validators
      */
     public static function validateEntityName($shortcut)
     {
-        $entity = str_replace('/', '\\', $shortcut);
+        $model = str_replace('/', '\\', $shortcut);
 
-        if (false === $pos = strpos($entity, ':')) {
+        if (false === $pos = strpos($model, ':')) {
             throw new \InvalidArgumentException(sprintf(
-                'The entity name must contain a ":" (colon sign) '
-                .'("%s" given, expecting something like AcmeBlogBundle:Post)',
-                $entity
+                'The entity name must contain a ":" (colon sign)'
+                .' ("%s" given, expecting something like AcmeBlogBundle:Post)',
+                $model
             ));
         }
 
-        return [substr($entity, 0, $pos), substr($entity, $pos + 1)];
+        return [substr($model, 0, $pos), substr($model, $pos + 1)];
     }
 
     /**
@@ -93,8 +97,8 @@ class Validators
 
         if (false !== strpos($adminClassBasename, ':')) {
             throw new \InvalidArgumentException(sprintf(
-                'The admin class name must not contain a ":" (colon sign) '
-                .'("%s" given, expecting something like PostAdmin")',
+                'The admin class name must not contain a ":" (colon sign)'
+                .' ("%s" given, expecting something like PostAdmin")',
                 $adminClassBasename
             ));
         }
@@ -117,13 +121,13 @@ class Validators
 
         if (false !== strpos($controllerClassBasename, ':')) {
             throw new \InvalidArgumentException(sprintf(
-                'The controller class name must not contain a ":" (colon sign) ("%s" given, '
-                .'expecting something like PostAdminController")',
+                'The controller class name must not contain a ":" (colon sign)'
+                .' ("%s" given, expecting something like PostAdminController")',
                 $controllerClassBasename
             ));
         }
 
-        if ('Controller' != substr($controllerClassBasename, -10)) {
+        if ('Controller' !== substr($controllerClassBasename, -10)) {
             throw new \InvalidArgumentException('The controller class name must end with "Controller".');
         }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -17,18 +19,38 @@ use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Exception\NoValueException;
-use Symfony\Component\Translation\TranslatorInterface;
+use Sonata\AdminBundle\Templating\TemplateRegistryInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Exception\ServiceCircularReferenceException;
+use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
+use Symfony\Component\Security\Acl\Voter\FieldVote;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
+use Symfony\Component\Translation\TranslatorInterface as LegacyTranslationInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 use Twig\Error\LoaderError;
 use Twig\Extension\AbstractExtension;
 use Twig\Template;
+use Twig\TemplateWrapper;
 use Twig\TwigFilter;
+use Twig\TwigFunction;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class SonataAdminExtension extends AbstractExtension
 {
+    // @todo: there are more locales which are not supported by moment and they need to be translated/normalized/canonicalized here
+    public const MOMENT_UNSUPPORTED_LOCALES = [
+        'de' => ['de', 'de-at'],
+        'es' => ['es', 'es-do'],
+        'nl' => ['nl', 'nl-be'],
+        'fr' => ['fr', 'fr-ca', 'fr-ch'],
+    ];
+
     /**
      * @var Pool
      */
@@ -49,18 +71,54 @@ class SonataAdminExtension extends AbstractExtension
      */
     private $xEditableTypeMapping = [];
 
-    public function __construct(Pool $pool, LoggerInterface $logger = null, TranslatorInterface $translator = null)
-    {
-        // NEXT_MAJOR: make the translator parameter required
+    /**
+     * @var ContainerInterface
+     */
+    private $templateRegistries;
+
+    /**
+     * @var AuthorizationCheckerInterface
+     */
+    private $securityChecker;
+
+    public function __construct(
+        Pool $pool,
+        ?LoggerInterface $logger = null,
+        $translator = null,
+        ?ContainerInterface $templateRegistries = null,
+        ?AuthorizationCheckerInterface $securityChecker = null
+    ) {
+        // NEXT_MAJOR: make the translator parameter required, move TranslatorInterface check to method signature
+        // and remove this block
+
         if (null === $translator) {
             @trigger_error(
                 'The $translator parameter will be required fields with the 4.0 release.',
                 E_USER_DEPRECATED
             );
+        } else {
+            if (!$translator instanceof TranslatorInterface) {
+                @trigger_error(sprintf(
+                    'The $translator parameter should be an instance of "%s" and will be mandatory in 4.0.',
+                    TranslatorInterface::class
+                ), E_USER_DEPRECATED);
+            }
+
+            if (!$translator instanceof TranslatorInterface && !$translator instanceof LegacyTranslationInterface) {
+                throw new \TypeError(sprintf(
+                    'Argument 2 must be an instance of "%s" or preferably "%s", "%s given"',
+                    TranslatorInterface::class,
+                    LegacyTranslationInterface::class,
+                    \get_class($translator)
+                ));
+            }
         }
+
         $this->pool = $pool;
         $this->logger = $logger;
         $this->translator = $translator;
+        $this->templateRegistries = $templateRegistries;
+        $this->securityChecker = $securityChecker;
     }
 
     public function getFilters()
@@ -96,7 +154,7 @@ class SonataAdminExtension extends AbstractExtension
             ),
             new TwigFilter(
                 'sonata_urlsafeid',
-                [$this, 'getUrlsafeIdentifier']
+                [$this, 'getUrlSafeIdentifier']
             ),
             new TwigFilter(
                 'sonata_xeditable_type',
@@ -109,6 +167,15 @@ class SonataAdminExtension extends AbstractExtension
         ];
     }
 
+    public function getFunctions()
+    {
+        return [
+            new TwigFunction('canonicalize_locale_for_moment', [$this, 'getCanonicalizedLocaleForMoment'], ['needs_context' => true]),
+            new TwigFunction('canonicalize_locale_for_select2', [$this, 'getCanonicalizedLocaleForSelect2'], ['needs_context' => true]),
+            new TwigFunction('is_granted_affirmative', [$this, 'isGrantedAffirmative']),
+        ];
+    }
+
     public function getName()
     {
         return 'sonata_admin';
@@ -117,32 +184,38 @@ class SonataAdminExtension extends AbstractExtension
     /**
      * render a list element from the FieldDescription.
      *
-     * @param mixed $object
-     * @param array $params
+     * @param object|array $listElement
+     * @param array        $params
      *
      * @return string
      */
     public function renderListElement(
         Environment $environment,
-        $object,
+        $listElement,
         FieldDescriptionInterface $fieldDescription,
         $params = []
     ) {
         $template = $this->getTemplate(
             $fieldDescription,
+            // NEXT_MAJOR: Remove this line and use commented line below instead
             $fieldDescription->getAdmin()->getTemplate('base_list_field'),
+            //$this->getTemplateRegistry($fieldDescription->getAdmin()->getCode())->getTemplate('base_list_field'),
             $environment
         );
 
-        return $this->output($fieldDescription, $template, array_merge($params, [
+        [$object, $value] = $this->getObjectAndValueFromListElement($listElement, $fieldDescription);
+
+        return $this->render($fieldDescription, $template, array_merge($params, [
             'admin' => $fieldDescription->getAdmin(),
             'object' => $object,
-            'value' => $this->getValueFromFieldDescription($object, $fieldDescription),
+            'value' => $value,
             'field_description' => $fieldDescription,
         ]), $environment);
     }
 
     /**
+     * @deprecated since sonata-project/admin-bundle 3.33, to be removed in 4.0. Use render instead
+     *
      * @return string
      */
     public function output(
@@ -151,31 +224,12 @@ class SonataAdminExtension extends AbstractExtension
         array $parameters,
         Environment $environment
     ) {
-        $content = $template->render($parameters);
-
-        if ($environment->isDebug()) {
-            $commentTemplate = <<<'EOT'
-
-<!-- START
-    fieldName: %s
-    template: %s
-    compiled template: %s
-    -->
-    %s
-<!-- END - fieldName: %s -->
-EOT;
-
-            return sprintf(
-                $commentTemplate,
-                $fieldDescription->getFieldName(),
-                $fieldDescription->getTemplate(),
-                $template->getTemplateName(),
-                $content,
-                $fieldDescription->getFieldName()
-            );
-        }
-
-        return $content;
+        return $this->render(
+            $fieldDescription,
+            new TemplateWrapper($environment, $template),
+            $parameters,
+            $environment
+        );
     }
 
     /**
@@ -186,6 +240,10 @@ EOT;
      *
      * @throws \RuntimeException
      *
+     * NEXT_MAJOR: Remove this method
+     *
+     * @deprecated This method is deprecated with no replacement since sonata-project/admin-bundle 3.73 and will be removed in 4.0.
+     *
      * @return mixed
      */
     public function getValueFromFieldDescription(
@@ -193,6 +251,12 @@ EOT;
         FieldDescriptionInterface $fieldDescription,
         array $params = []
     ) {
+        @trigger_error(sprintf(
+            'The %s() method is deprecated since sonata-project/admin-bundle 3.73 and will be removed in version 4.0.'
+            .' There is no replacement.',
+            __METHOD__
+        ), E_USER_DEPRECATED);
+
         if (isset($params['loop']) && $object instanceof \ArrayAccess) {
             throw new \RuntimeException('remove the loop requirement');
         }
@@ -204,6 +268,13 @@ EOT;
         } catch (NoValueException $e) {
             if ($fieldDescription->getAssociationAdmin()) {
                 $value = $fieldDescription->getAssociationAdmin()->getNewInstance();
+            } else {
+                // NEXT_MAJOR: throw the NoValueException.
+                @trigger_error(
+                    'Accessing a non existing value is deprecated'
+                    .' since sonata-project/admin-bundle 3.67 and will throw an exception in 4.0.',
+                    E_USER_DEPRECATED
+                );
             }
         }
 
@@ -213,7 +284,7 @@ EOT;
     /**
      * render a view element.
      *
-     * @param mixed $object
+     * @param object $object
      *
      * @return string
      */
@@ -231,10 +302,17 @@ EOT;
         try {
             $value = $fieldDescription->getValue($object);
         } catch (NoValueException $e) {
+            // NEXT_MAJOR: Remove the try catch in order to throw the NoValueException.
+            @trigger_error(
+                'Accessing a non existing value is deprecated'
+                .' since sonata-project/admin-bundle 3.67 and will throw an exception in 4.0.',
+                E_USER_DEPRECATED
+            );
+
             $value = null;
         }
 
-        return $this->output($fieldDescription, $template, [
+        return $this->render($fieldDescription, $template, [
             'field_description' => $fieldDescription,
             'object' => $object,
             'value' => $value,
@@ -265,12 +343,26 @@ EOT;
         try {
             $baseValue = $fieldDescription->getValue($baseObject);
         } catch (NoValueException $e) {
+            // NEXT_MAJOR: Remove the try catch in order to throw the NoValueException.
+            @trigger_error(
+                'Accessing a non existing value is deprecated'
+                .' since sonata-project/admin-bundle 3.67 and will throw an exception in 4.0.',
+                E_USER_DEPRECATED
+            );
+
             $baseValue = null;
         }
 
         try {
             $compareValue = $fieldDescription->getValue($compareObject);
         } catch (NoValueException $e) {
+            // NEXT_MAJOR: Remove the try catch in order to throw the NoValueException.
+            @trigger_error(
+                'Accessing a non existing value is deprecated'
+                .' since sonata-project/admin-bundle 3.67 and will throw an exception in 4.0.',
+                E_USER_DEPRECATED
+            );
+
             $compareValue = null;
         }
 
@@ -278,23 +370,26 @@ EOT;
             'admin' => $fieldDescription->getAdmin(),
             'field_description' => $fieldDescription,
             'value' => $baseValue,
+            'object' => $baseObject,
         ]);
 
         $compareValueOutput = $template->render([
             'field_description' => $fieldDescription,
             'admin' => $fieldDescription->getAdmin(),
             'value' => $compareValue,
+            'object' => $compareObject,
         ]);
 
         // Compare the rendered output of both objects by using the (possibly) overridden field block
         $isDiff = $baseValueOutput !== $compareValueOutput;
 
-        return $this->output($fieldDescription, $template, [
+        return $this->render($fieldDescription, $template, [
             'field_description' => $fieldDescription,
             'value' => $baseValue,
             'value_compare' => $compareValue,
             'is_diff' => $isDiff,
             'admin' => $fieldDescription->getAdmin(),
+            'object' => $baseObject,
         ], $environment);
     }
 
@@ -307,7 +402,7 @@ EOT;
      */
     public function renderRelationElement($element, FieldDescriptionInterface $fieldDescription)
     {
-        if (!is_object($element)) {
+        if (!\is_object($element)) {
             return $element;
         }
 
@@ -319,8 +414,7 @@ EOT;
 
             if ($method) {
                 @trigger_error(
-                    'Option "associated_tostring" is deprecated since version 2.3 and will be removed in 4.0. '
-                    .'Use "associated_property" instead.',
+                    'Option "associated_tostring" is deprecated since version 2.3 and will be removed in 4.0. Use "associated_property" instead.',
                     E_USER_DEPRECATED
                 );
             } else {
@@ -329,18 +423,18 @@ EOT;
 
             if (!method_exists($element, $method)) {
                 throw new \RuntimeException(sprintf(
-                    'You must define an `associated_property` option or '.
-                    'create a `%s::__toString` method to the field option %s from service %s is ',
-                    get_class($element),
+                    'You must define an `associated_property` option or create a `%s::__toString` method'
+                    .' to the field option %s from service %s is ',
+                    \get_class($element),
                     $fieldDescription->getName(),
                     $fieldDescription->getAdmin()->getCode()
                 ));
             }
 
-            return call_user_func([$element, $method]);
+            return $element->{$method}();
         }
 
-        if (is_callable($propertyPath)) {
+        if (\is_callable($propertyPath)) {
             return $propertyPath($element);
         }
 
@@ -354,13 +448,18 @@ EOT;
      *
      * @return string string representation of the id that is safe to use in a url
      */
-    public function getUrlsafeIdentifier($model, AdminInterface $admin = null)
+    public function getUrlSafeIdentifier($model, ?AdminInterface $admin = null)
     {
         if (null === $admin) {
-            $admin = $this->pool->getAdminByClass(ClassUtils::getClass($model));
+            $class = ClassUtils::getClass($model);
+            if (!$this->pool->hasAdminByClass($class)) {
+                throw new \InvalidArgumentException('You must pass an admin.');
+            }
+
+            $admin = $this->pool->getAdminByClass($class);
         }
 
-        return $admin->getUrlsafeIdentifier($model);
+        return $admin->getUrlSafeIdentifier($model);
     }
 
     /**
@@ -397,7 +496,7 @@ EOT;
             reset($choices);
             $first = current($choices);
             // the choices are already in the right format
-            if (is_array($first) && array_key_exists('value', $first) && array_key_exists('text', $first)) {
+            if (\is_array($first) && \array_key_exists('value', $first) && \array_key_exists('text', $first)) {
                 $xEditableChoices = $choices;
             } else {
                 foreach ($choices as $value => $text) {
@@ -418,7 +517,108 @@ EOT;
             }
         }
 
+        if (false === $fieldDescription->getOption('required', true)
+            && false === $fieldDescription->getOption('multiple', false)
+        ) {
+            $xEditableChoices = array_merge([[
+                'value' => '',
+                'text' => '',
+            ]], $xEditableChoices);
+        }
+
         return $xEditableChoices;
+    }
+
+    /**
+     * Returns a canonicalized locale for "moment" NPM library,
+     * or `null` if the locale's language is "en", which doesn't require localization.
+     *
+     * @return string|null
+     */
+    final public function getCanonicalizedLocaleForMoment(array $context)
+    {
+        $locale = strtolower(str_replace('_', '-', $context['app']->getRequest()->getLocale()));
+
+        // "en" language doesn't require localization.
+        if (('en' === $lang = substr($locale, 0, 2)) && !\in_array($locale, ['en-au', 'en-ca', 'en-gb', 'en-ie', 'en-nz'], true)) {
+            return null;
+        }
+
+        foreach (self::MOMENT_UNSUPPORTED_LOCALES as $language => $locales) {
+            if ($language === $lang && !\in_array($locale, $locales, true)) {
+                $locale = $language;
+            }
+        }
+
+        return $locale;
+    }
+
+    /**
+     * Returns a canonicalized locale for "select2" NPM library,
+     * or `null` if the locale's language is "en", which doesn't require localization.
+     *
+     * @return string|null
+     */
+    final public function getCanonicalizedLocaleForSelect2(array $context)
+    {
+        $locale = str_replace('_', '-', $context['app']->getRequest()->getLocale());
+
+        // "en" language doesn't require localization.
+        if ('en' === $lang = substr($locale, 0, 2)) {
+            return null;
+        }
+
+        switch ($locale) {
+            case 'pt':
+                $locale = 'pt-PT';
+                break;
+            case 'ug':
+                $locale = 'ug-CN';
+                break;
+            case 'zh':
+                $locale = 'zh-CN';
+                break;
+            default:
+                if (!\in_array($locale, ['pt-BR', 'pt-PT', 'ug-CN', 'zh-CN', 'zh-TW'], true)) {
+                    $locale = $lang;
+                }
+        }
+
+        return $locale;
+    }
+
+    /**
+     * @param string|array $role
+     * @param object|null  $object
+     * @param string|null  $field
+     *
+     * @return bool
+     */
+    public function isGrantedAffirmative($role, $object = null, $field = null)
+    {
+        if (null === $this->securityChecker) {
+            return false;
+        }
+
+        if (null !== $field) {
+            $object = new FieldVote($object, $field);
+        }
+
+        if (!\is_array($role)) {
+            $role = [$role];
+        }
+
+        foreach ($role as $oneRole) {
+            try {
+                if ($this->securityChecker->isGranted($oneRole, $object)) {
+                    return true;
+                }
+            } catch (AuthenticationCredentialsNotFoundException $e) {
+                // empty on purpose
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -426,7 +626,7 @@ EOT;
      *
      * @param string $defaultTemplate
      *
-     * @return \Twig_TemplateInterface
+     * @return TemplateWrapper
      */
     protected function getTemplate(
         FieldDescriptionInterface $fieldDescription,
@@ -436,20 +636,19 @@ EOT;
         $templateName = $fieldDescription->getTemplate() ?: $defaultTemplate;
 
         try {
-            $template = $environment->loadTemplate($templateName);
+            $template = $environment->load($templateName);
         } catch (LoaderError $e) {
-            @trigger_error(
-                'Relying on default template loading on field template loading exception '.
-                'is deprecated since 3.1 and will be removed in 4.0. '.
-                'A \Twig_Error_Loader exception will be thrown instead',
-                E_USER_DEPRECATED
-            );
-            $template = $environment->loadTemplate($defaultTemplate);
+            @trigger_error(sprintf(
+                'Relying on default template loading on field template loading exception is deprecated since 3.1'
+                .' and will be removed in 4.0. A %s exception will be thrown instead',
+                LoaderError::class
+            ), E_USER_DEPRECATED);
+            $template = $environment->load($defaultTemplate);
 
             if (null !== $this->logger) {
                 $this->logger->warning(sprintf(
-                    'An error occured trying to load the template "%s" for the field "%s", '.
-                    'the default template "%s" was used instead.',
+                    'An error occured trying to load the template "%s" for the field "%s",'
+                    .' the default template "%s" was used instead.',
                     $templateName,
                     $fieldDescription->getFieldName(),
                     $defaultTemplate
@@ -458,5 +657,99 @@ EOT;
         }
 
         return $template;
+    }
+
+    private function render(
+        FieldDescriptionInterface $fieldDescription,
+        TemplateWrapper $template,
+        array $parameters,
+        Environment $environment
+    ): string {
+        $content = $template->render($parameters);
+
+        if ($environment->isDebug()) {
+            $commentTemplate = <<<'EOT'
+
+<!-- START
+    fieldName: %s
+    template: %s
+    compiled template: %s
+    -->
+    %s
+<!-- END - fieldName: %s -->
+EOT;
+
+            return sprintf(
+                $commentTemplate,
+                $fieldDescription->getFieldName(),
+                $fieldDescription->getTemplate(),
+                $template->getSourceContext()->getName(),
+                $content,
+                $fieldDescription->getFieldName()
+            );
+        }
+
+        return $content;
+    }
+
+    /**
+     * @throws ServiceCircularReferenceException
+     * @throws ServiceNotFoundException
+     */
+    private function getTemplateRegistry(string $adminCode): TemplateRegistryInterface
+    {
+        $serviceId = $adminCode.'.template_registry';
+        $templateRegistry = $this->templateRegistries->get($serviceId);
+
+        if ($templateRegistry instanceof TemplateRegistryInterface) {
+            return $templateRegistry;
+        }
+
+        throw new ServiceNotFoundException($serviceId);
+    }
+
+    /**
+     * Extracts the object and requested value from the $listElement.
+     *
+     * @param object|array $listElement
+     *
+     * @throws \TypeError when $listElement is not an object or an array with an object on offset 0
+     *
+     * @return array An array containing object and value
+     */
+    private function getObjectAndValueFromListElement(
+        $listElement,
+        FieldDescriptionInterface $fieldDescription
+    ): array {
+        if (\is_object($listElement)) {
+            $object = $listElement;
+        } elseif (\is_array($listElement)) {
+            if (!isset($listElement[0]) || !\is_object($listElement[0])) {
+                throw new \TypeError(sprintf('If argument 1 passed to %s() is an array it must contain an object at offset 0.', __METHOD__));
+            }
+
+            $object = $listElement[0];
+        } else {
+            throw new \TypeError(sprintf('Argument 1 passed to %s() must be an object or an array, %s given.', __METHOD__, \gettype($listElement)));
+        }
+
+        if (\is_array($listElement) && \array_key_exists($fieldDescription->getName(), $listElement)) {
+            $value = $listElement[$fieldDescription->getName()];
+        } else {
+            try {
+                $value = $fieldDescription->getValue($object);
+            } catch (NoValueException $e) {
+                // NEXT_MAJOR: throw the NoValueException.
+                @trigger_error(
+                    'Accessing a non existing value is deprecated'
+                    .' since sonata-project/admin-bundle 3.67 and will throw an exception in 4.0.',
+                    E_USER_DEPRECATED
+                );
+
+                $value = null;
+            }
+        }
+
+        return [$object, $value];
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -21,12 +23,12 @@ abstract class Filter implements FilterInterface
     /**
      * @var string|null
      */
-    protected $name = null;
+    protected $name;
 
     /**
      * @var mixed|null
      */
-    protected $value = null;
+    protected $value;
 
     /**
      * @var array
@@ -63,7 +65,7 @@ abstract class Filter implements FilterInterface
 
     public function getOption($name, $default = null)
     {
-        if (array_key_exists($name, $this->options)) {
+        if (\array_key_exists($name, $this->options)) {
             return $this->options[$name];
         }
 
@@ -87,7 +89,7 @@ abstract class Filter implements FilterInterface
 
     public function getFieldOption($name, $default = null)
     {
-        if (isset($this->options['field_options'][$name]) && is_array($this->options['field_options'])) {
+        if (isset($this->options['field_options'][$name]) && \is_array($this->options['field_options'])) {
             return $this->options['field_options'][$name];
         }
 
@@ -114,7 +116,10 @@ abstract class Filter implements FilterInterface
         $fieldName = $this->getOption('field_name');
 
         if (!$fieldName) {
-            throw new \RuntimeException(sprintf('The option `field_name` must be set for field: `%s`', $this->getName()));
+            throw new \RuntimeException(sprintf(
+                'The option `field_name` must be set for field: `%s`',
+                $this->getName()
+            ));
         }
 
         return $fieldName;
@@ -130,7 +135,10 @@ abstract class Filter implements FilterInterface
         $fieldMapping = $this->getOption('field_mapping');
 
         if (!$fieldMapping) {
-            throw new \RuntimeException(sprintf('The option `field_mapping` must be set for field: `%s`', $this->getName()));
+            throw new \RuntimeException(sprintf(
+                'The option `field_mapping` must be set for field: `%s`',
+                $this->getName()
+            ));
         }
 
         return $fieldMapping;
@@ -141,7 +149,10 @@ abstract class Filter implements FilterInterface
         $associationMapping = $this->getOption('association_mapping');
 
         if (!$associationMapping) {
-            throw new \RuntimeException(sprintf('The option `association_mapping` must be set for field: `%s`', $this->getName()));
+            throw new \RuntimeException(sprintf(
+                'The option `association_mapping` must be set for field: `%s`',
+                $this->getName()
+            ));
         }
 
         return $associationMapping;

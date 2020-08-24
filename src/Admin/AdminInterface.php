@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -12,23 +14,56 @@
 namespace Sonata\AdminBundle\Admin;
 
 use Knp\Menu\FactoryInterface as MenuFactoryInterface;
+use Knp\Menu\ItemInterface;
+use RuntimeException;
 use Sonata\AdminBundle\Builder\DatagridBuilderInterface;
 use Sonata\AdminBundle\Builder\FormContractorInterface;
 use Sonata\AdminBundle\Builder\ListBuilderInterface;
 use Sonata\AdminBundle\Builder\RouteBuilderInterface;
+use Sonata\AdminBundle\Datagrid\DatagridInterface;
 use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+use Sonata\AdminBundle\Filter\Persister\FilterPersisterInterface;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
+use Sonata\AdminBundle\Object\MetadataInterface;
+use Sonata\AdminBundle\Route\RouteGeneratorInterface;
 use Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface;
 use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
-use Sonata\CoreBundle\Model\Metadata;
-use Sonata\CoreBundle\Validator\ErrorElement;
-use Symfony\Component\Form\Form;
+use Sonata\Exporter\Source\SourceIteratorInterface;
+use Sonata\Form\Validator\ErrorElement;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Translation\TranslatorInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @method array                           configureActionButtons(string $action, ?object $object = null)
+ * @method string                          getSearchResultLink(object $object)
+ * @method void                            showMosaicButton(bool $isShown)
+ * @method bool                            isDefaultFilter(string $name)                                         // NEXT_MAJOR: Remove this
+ * @method bool                            isCurrentRoute(string $name, ?string $adminCode)
+ * @method bool                            canAccessObject(string $action, object $object)
+ * @method mixed                           getPersistentParameter(string $name)
+ * @method array                           getExportFields()
+ * @method array                           getSubClasses()
+ * @method AdminInterface                  getRoot()
+ * @method string                          getRootCode()
+ * @method array                           getActionButtons(string $action, ?object $object)
+ * @method FieldDescriptionCollection|null getList()
+ * @method void                            setFilterPersister(?FilterPersisterInterface $filterPersister = null)
+ * @method string                          getBaseRoutePattern()
+ * @method string                          getBaseRouteName()
+ * @method ItemInterface                   getSideMenu(string $action, ?AdminInterface $childAdmin = null)
+ * @method void                            addParentAssociationMapping(string $code, string $value)
+ * @method RouteGeneratorInterface         getRouteGenerator()
+ * @method string                          getClassnameLabel()
+ * @method AdminInterface|null             getCurrentChildAdmin()
+ * @method string|null                     getParentAssociationMapping()
+ * @method void                            reorderFormGroup(string $group, array $keys)
+ * @method void                            defineFormBuilder(FormBuilderInterface $formBuilder)
+ * @method string                          getPagerType()
  */
 interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegistryInterface, LifecycleHookProviderInterface, MenuBuilderInterface, ParentAdminInterface, UrlGeneratorInterface
 {
@@ -78,8 +113,11 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
 
     public function attachAdminClass(FieldDescriptionInterface $fieldDescription);
 
+    // NEXT_MAJOR: uncomment this method in 4.0
+    //public function getPagerType(): string;
+
     /**
-     * @return \Sonata\AdminBundle\Datagrid\DatagridInterface
+     * @return DatagridInterface
      */
     public function getDatagrid();
 
@@ -98,29 +136,7 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function getBaseControllerName();
 
     /**
-     * Sets a list of templates.
-     *
-     * @param array $templates
-     */
-    public function setTemplates(array $templates);
-
-    /**
-     * Sets a specific template.
-     *
-     * @param string $name
-     * @param string $template
-     */
-    public function setTemplate($name, $template);
-
-    /**
-     * Get all templates.
-     *
-     * @return array
-     */
-    public function getTemplates();
-
-    /**
-     * @return \Sonata\AdminBundle\Model\ModelManagerInterface
+     * @return ModelManagerInterface
      */
     public function getModelManager();
 
@@ -144,12 +160,14 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Returns a form depend on the given $object.
      *
-     * @return Form
+     * @return FormInterface
      */
     public function getForm();
 
     /**
-     * @throws \RuntimeException if no request is set
+     * NEXT MAJOR: Remove the throws tag.
+     *
+     * @throws RuntimeException if no request is set
      *
      * @return Request
      */
@@ -208,7 +226,7 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
      *
      * @return string the translated string
      *
-     * @deprecated since 3.9, to be removed in 4.0
+     * @deprecated since sonata-project/admin-bundle 3.9, to be removed in 4.0
      */
     public function trans($id, array $parameters = [], $domain = null, $locale = null);
 
@@ -229,15 +247,8 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function hasRoute($name);
 
     /**
-     * Check the current request is given route or not.
-     *
-     * @param string $name
-     * @param string $adminCode
-     *
-     * @return bool
+     * @return void
      */
-    public function isCurrentRoute($name, $adminCode = null);
-
     public function setSecurityHandler(SecurityHandlerInterface $securityHandler);
 
     /**
@@ -246,28 +257,28 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function getSecurityHandler();
 
     /**
-     * @param string      $name
-     * @param object|null $object
+     * @param string|array $name
+     * @param object|null  $object
      *
      * @return bool
      */
     public function isGranted($name, $object = null);
 
     /**
-     * @param mixed $entity
+     * @param mixed $model
      *
      * @return string a string representation of the identifiers for this instance
      */
-    public function getNormalizedIdentifier($entity);
+    public function getNormalizedIdentifier($model);
 
     /**
      * Shorthand method for templating.
      *
-     * @param object $entity
+     * @param object $model
      *
      * @return mixed
      */
-    public function id($entity);
+    public function id($model);
 
     /**
      * @param ValidatorInterface $validator
@@ -280,21 +291,24 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function getValidator();
 
     /**
-     * @return array
+     * @return FieldDescriptionCollection|null
      */
     public function getShow();
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    public function getList(): ?FieldDescriptionCollection;
 
     public function setFormTheme(array $formTheme);
 
     /**
-     * @return array
+     * @return string[]
      */
     public function getFormTheme();
 
     public function setFilterTheme(array $filterTheme);
 
     /**
-     * @return array
+     * @return string[]
      */
     public function getFilterTheme();
 
@@ -315,7 +329,7 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function getRouteBuilder();
 
     /**
-     * @param mixed $object
+     * @param object $object
      *
      * @return string
      */
@@ -338,7 +352,7 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function supportsPreviewMode();
 
     /**
-     * @return mixed a new object instance
+     * @return object a new object instance
      */
     public function getNewInstance();
 
@@ -350,44 +364,43 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Returns the uniqid.
      *
-     * @return int
+     * @return string
      */
     public function getUniqid();
 
     /**
-     * Returns the classname label.
-     *
-     * @return string the classname label
-     */
-    public function getClassnameLabel();
-
-    /**
      * @param mixed $id
      *
-     * @return mixed
+     * @return object|null
      */
     public function getObject($id);
 
     /**
-     * @param object $subject
+     * @param object|null $subject
      */
     public function setSubject($subject);
 
     /**
-     * @return mixed
+     * NEXT MAJOR: return object.
+     *
+     * @return object|null
      */
     public function getSubject();
 
     /**
+     * NEXT_MAJOR: Remove this method, since it's already in FieldDescriptionRegistryInterface.
+     *
      * Returns a list FieldDescription.
      *
      * @param string $name
      *
-     * @return FieldDescriptionInterface
+     * @return FieldDescriptionInterface|null // NEXT_MAJOR: Return FieldDescriptionInterface
      */
     public function getListFieldDescription($name);
 
     /**
+     * NEXT_MAJOR: Remove this method, since it's already in FieldDescriptionRegistryInterface.
+     *
      * Returns true if the list FieldDescription exists.
      *
      * @param string $name
@@ -397,6 +410,8 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function hasListFieldDescription($name);
 
     /**
+     * NEXT_MAJOR: Remove this method, since it's already in FieldDescriptionRegistryInterface.
+     *
      * Returns the collection of list FieldDescriptions.
      *
      * @return array
@@ -406,29 +421,23 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Returns the array of allowed export formats.
      *
-     * @return array
+     * @return string[]
      */
     public function getExportFormats();
 
     /**
-     * Retuns a list of exported fields.
-     *
-     * @return array
-     */
-    public function getExportFields();
-
-    /**
      * Returns SourceIterator.
      *
-     * @return \Exporter\Source\SourceIteratorInterface
+     * @return SourceIteratorInterface
      */
     public function getDataSourceIterator();
+
+    public function configure();
 
     /**
      * Call before the batch action, allow you to alter the query and the idx.
      *
      * @param string $actionName
-     * @param array  $idx
      * @param bool   $allElements
      */
     public function preBatchAction($actionName, ProxyQueryInterface $query, array &$idx, $allElements);
@@ -436,7 +445,7 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Return array of filter parameters.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function getFilterParameters();
 
@@ -450,7 +459,7 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * NEXT_MAJOR: remove this method.
      *
-     * @param mixed $object
+     * @param object $object
      *
      * @deprecated this feature cannot be stable, use a custom validator,
      *             the feature will be removed with Symfony 2.2
@@ -467,12 +476,12 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Add object security, fe. make the current user owner of the object.
      *
-     * @param mixed $object
+     * @param object $object
      */
     public function createObjectSecurity($object);
 
     /**
-     * @return AdminInterface
+     * @return AdminInterface|null NEXT_MAJOR: return AdminInterface
      */
     public function getParent();
 
@@ -488,9 +497,11 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Returns template.
      *
+     * @deprecated since sonata-project/admin-bundle 3.35. To be removed in 4.0. Use TemplateRegistry services instead
+     *
      * @param string $name
      *
-     * @return null|string
+     * @return string|null
      */
     public function getTemplate($name);
 
@@ -511,7 +522,9 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Return the form groups.
      *
-     * @return array
+     * NEXT_MAJOR: must return only `array<string, mixed>`.
+     *
+     * @return array<string, mixed>|false (false if the groups have not been initialized)
      */
     public function getFormGroups();
 
@@ -520,10 +533,16 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
      */
     public function setFormGroups(array $formGroups);
 
+    /**
+     * NEXT_MAJOR: must return only `array<string, mixed>`.
+     */
     public function getFormTabs();
 
     public function setFormTabs(array $formTabs);
 
+    /**
+     * NEXT_MAJOR: must return only `array<string, mixed>`.
+     */
     public function getShowTabs();
 
     public function setShowTabs(array $showTabs);
@@ -538,7 +557,9 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Returns the show groups.
      *
-     * @return array
+     * NEXT_MAJOR: must return only `array<string, mixed>`.
+     *
+     * @return array<string, mixed>|false (false if the groups have not been initialized)
      */
     public function getShowGroups();
 
@@ -555,6 +576,8 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function reorderShowGroup($group, array $keys);
 
     /**
+     * NEXT_MAJOR: Remove this method, since it's already in FieldDescriptionRegistryInterface.
+     *
      * add a FieldDescription.
      *
      * @param string $name
@@ -562,6 +585,8 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function addFormFieldDescription($name, FieldDescriptionInterface $fieldDescription);
 
     /**
+     * NEXT_MAJOR: Remove this method, since it's already in FieldDescriptionRegistryInterface.
+     *
      * Remove a FieldDescription.
      *
      * @param string $name
@@ -574,20 +599,6 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
      * @return bool
      */
     public function isAclEnabled();
-
-    /**
-     * Returns list of supported sub classes.
-     *
-     * @return array
-     */
-    public function getSubClasses();
-
-    /**
-     * Adds a new class to a list of supported sub classes.
-     *
-     * @param $subClass
-     */
-    public function addSubClass($subClass);
 
     /**
      * Sets the list of supported sub classes.
@@ -627,7 +638,7 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Returns the list of batchs actions.
      *
-     * @return array the list of batchs actions
+     * @return array<string, mixed> the list of batchs actions
      */
     public function getBatchActions();
 
@@ -641,16 +652,19 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     /**
      * Returns an array of persistent parameters.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function getPersistentParameters();
 
     /**
-     * @param string $name
+     * NEXT_MAJOR: remove this signature
+     * Get breadcrumbs for $action.
      *
-     * @return null|mixed
+     * @param string $action
+     *
+     * @return iterable
      */
-    public function getPersistentParameter($name);
+    public function getBreadcrumbs($action);
 
     /**
      * Set the current child status.
@@ -661,6 +675,8 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
 
     /**
      * Returns the current child status.
+     *
+     * NEXT_MAJOR: Rename the function isCurrentChild()
      *
      * @return bool
      */
@@ -678,16 +694,28 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function getTranslationLabel($label, $context = '', $type = '');
 
     /**
-     * @param $object
+     * @param object $object
      *
-     * @return Metadata
+     * @return MetadataInterface
      */
     public function getObjectMetadata($object);
 
     /**
-     * @return array
+     * @return array<string, array<string, mixed>>
      */
     public function getListModes();
+
+    /**
+     * Check the current request is given route or not.
+     *
+     * NEXT_MAJOR: uncomment this method
+     *
+     * ```
+     * $this->isCurrentRoute('create'); // is create page?
+     * $this->isCurrentRoute('edit', 'some.admin.code'); // is some.admin.code admin's edit page?
+     * ```
+     */
+    // public function isCurrentRoute(string $name, ?string $adminCode = null): bool;
 
     /**
      * @param string $mode
@@ -695,50 +723,81 @@ interface AdminInterface extends AccessRegistryInterface, FieldDescriptionRegist
     public function setListMode($mode);
 
     /**
-     * return the list mode.
-     *
      * @return string
      */
     public function getListMode();
 
-    /**
-     * @param string $action
-     * @param mixed  $object
-     *
-     * @return array
+    /*
+     * Configure buttons for an action
      */
-    public function getActionButtons($action, $object = null);
+    // public function configureActionButtons(string $action, ?object $object = null): array;
 
-    /**
-     * Get the list of actions that can be accessed directly from the dashboard.
-     *
-     * @return array
-     */
-    public function getDashboardActions();
-
-    /**
+    // NEXT_MAJOR: uncomment this method for 4.0
+    /*
      * Returns the result link for an object.
-     *
-     * @param mixed $object
-     *
-     * @return string|null
      */
-    public function getSearchResultLink($object);
+    //public function getSearchResultLink(object $object): ?string
 
-    /**
-     * Setting to true will enable mosaic button for the admin screen.
-     * Setting to false will hide mosaic button for the admin screen.
-     *
-     * @param bool $isShown
-     */
-    public function showMosaicButton($isShown);
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    /**
+//     * Setting to true will enable mosaic button for the admin screen.
+//     * Setting to false will hide mosaic button for the admin screen.
+//     */
+//    public function showMosaicButton(bool $isShown): void;
 
-    /**
-     * Checks if a filter type is set to a default value.
-     *
-     * @param string $name
-     *
-     * @return bool
-     */
-    public function isDefaultFilter($name);
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    public function setFilterPersister(?\Sonata\AdminBundle\Filter\Persister\FilterPersisterInterface\FilterPersisterInterface $filterPersister = null): void;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    /**
+//     * Returns the baseRoutePattern used to generate the routing information.
+//     */
+//    public function getBaseRoutePattern(): string;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    /**
+//     * Returns the baseRouteName used to generate the routing information.
+//     */
+//    public function getBaseRouteName(): string;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    public function getSideMenu(string $action, ?AdminInterface $childAdmin = null): \Knp\Menu\ItemInterface;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    public function addParentAssociationMapping(string $code, string $value): void;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    public function getRouteGenerator(): \Sonata\AdminBundle\Route\RouteGeneratorInterface;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    /**
+//     * Returns the classname label.
+//     */
+//    public function getClassnameLabel(): string;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    /**
+//     * Returns the current child admin instance.
+//     */
+//    public function getCurrentChildAdmin(): ?AdminInterface;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    /**
+//     * Returns the name of the parent related field, so the field can be use to set the default
+//     * value (ie the parent object) or to filter the object.
+//     *
+//     */
+//    public function getParentAssociationMapping(): ?string;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    public function reorderFormGroup(string $group, array $keys): void;
+
+//    NEXT_MAJOR: uncomment this method in 4.0
+//    /**
+//     * This method is being called by the main admin class and the child class,
+//     * the getFormBuilder is only call by the main admin class.
+//     */
+//    public function defineFormBuilder(FormBuilderInterface $formBuilder): void;
 }
+
+class_exists(\Sonata\Form\Validator\ErrorElement::class);

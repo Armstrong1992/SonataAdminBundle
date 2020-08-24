@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -16,6 +18,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class DefaultRouteGenerator implements RouteGeneratorInterface
@@ -46,27 +50,31 @@ class DefaultRouteGenerator implements RouteGeneratorInterface
         $this->cache = $cache;
     }
 
-    public function generate($name, array $parameters = [], $absolute = UrlGeneratorInterface::ABSOLUTE_PATH)
+    public function generate($name, array $parameters = [], $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH)
     {
-        return $this->router->generate($name, $parameters, $absolute);
+        return $this->router->generate($name, $parameters, $referenceType);
     }
 
     public function generateUrl(
         AdminInterface $admin,
         $name,
         array $parameters = [],
-        $absolute = UrlGeneratorInterface::ABSOLUTE_PATH
+        $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH
     ) {
-        $arrayRoute = $this->generateMenuUrl($admin, $name, $parameters, $absolute);
+        $arrayRoute = $this->generateMenuUrl($admin, $name, $parameters, $referenceType);
 
-        return $this->router->generate($arrayRoute['route'], $arrayRoute['routeParameters'], $arrayRoute['routeAbsolute']);
+        return $this->router->generate(
+            $arrayRoute['route'],
+            $arrayRoute['routeParameters'],
+            $arrayRoute['routeAbsolute'] ? UrlGeneratorInterface::ABSOLUTE_URL : UrlGeneratorInterface::ABSOLUTE_PATH
+        );
     }
 
     public function generateMenuUrl(
         AdminInterface $admin,
         $name,
         array $parameters = [],
-        $absolute = UrlGeneratorInterface::ABSOLUTE_PATH
+        $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH
     ) {
         // if the admin is a child we automatically append the parent's id
         if ($admin->isChild() && $admin->hasRequest()) {
@@ -77,8 +85,10 @@ class DefaultRouteGenerator implements RouteGeneratorInterface
                 unset($parameters['id']);
             }
 
-            for ($parentAdmin = $admin->getParent(); null !== $parentAdmin; $parentAdmin = $parentAdmin->getParent()) {
+            $parentAdmin = $admin->getParent();
+            while (null !== $parentAdmin) {
                 $parameters[$parentAdmin->getIdParameter()] = $admin->getRequest()->attributes->get($parentAdmin->getIdParameter());
+                $parentAdmin = $parentAdmin->isChild() ? $parentAdmin->getParent() : null;
             }
         }
 
@@ -93,7 +103,7 @@ class DefaultRouteGenerator implements RouteGeneratorInterface
             $parameters['puniqid'] = $admin->getParentFieldDescription()->getAdmin()->getUniqid();
         }
 
-        if ('update' == $name || '|update' == substr($name, -7)) {
+        if ('update' === $name || '|update' === substr($name, -7)) {
             $parameters['uniqid'] = $admin->getUniqid();
             $parameters['code'] = $admin->getCode();
         }
@@ -105,33 +115,28 @@ class DefaultRouteGenerator implements RouteGeneratorInterface
 
         $code = $this->getCode($admin, $name);
 
-        if (!array_key_exists($code, $this->caches)) {
+        if (!\array_key_exists($code, $this->caches)) {
             throw new \RuntimeException(sprintf('unable to find the route `%s`', $code));
         }
 
         return [
             'route' => $this->caches[$code],
             'routeParameters' => $parameters,
-            'routeAbsolute' => $absolute,
+            'routeAbsolute' => UrlGeneratorInterface::ABSOLUTE_URL === $referenceType,
         ];
     }
 
     public function hasAdminRoute(AdminInterface $admin, $name)
     {
-        return array_key_exists($this->getCode($admin, $name), $this->caches);
+        return \array_key_exists($this->getCode($admin, $name), $this->caches);
     }
 
-    /**
-     * @param string $name
-     *
-     * @return string
-     */
-    private function getCode(AdminInterface $admin, $name)
+    private function getCode(AdminInterface $admin, string $name): string
     {
         $this->loadCache($admin);
 
         // someone provide the fullname
-        if (!$admin->isChild() && array_key_exists($name, $this->caches)) {
+        if (!$admin->isChild() && \array_key_exists($name, $this->caches)) {
             return $name;
         }
 
@@ -139,24 +144,26 @@ class DefaultRouteGenerator implements RouteGeneratorInterface
 
         // someone provide a code, so it is a child
         if (strpos($name, '.')) {
-            return $codePrefix.'|'.$name;
+            return sprintf('%s|%s', $codePrefix, $name);
         }
 
-        return $codePrefix.'.'.$name;
+        return sprintf('%s.%s', $codePrefix, $name);
     }
 
-    private function loadCache(AdminInterface $admin)
+    private function loadCache(AdminInterface $admin): void
     {
         if ($admin->isChild()) {
             $this->loadCache($admin->getParent());
-        } else {
-            if (in_array($admin->getCode(), $this->loaded)) {
-                return;
-            }
 
-            $this->caches = array_merge($this->cache->load($admin), $this->caches);
-
-            $this->loaded[] = $admin->getCode();
+            return;
         }
+
+        if (\in_array($admin->getCode(), $this->loaded, true)) {
+            return;
+        }
+
+        $this->caches = array_merge($this->cache->load($admin), $this->caches);
+
+        $this->loaded[] = $admin->getCode();
     }
 }

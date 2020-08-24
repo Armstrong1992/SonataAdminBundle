@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -17,6 +19,8 @@ use Symfony\Component\Form\DataTransformerInterface;
 
 /**
  * Transform object to ID and property label.
+ *
+ * @final since sonata-project/admin-bundle 3.52
  *
  * @author Andrej Hudec <pulzarraider@gmail.com>
  */
@@ -76,15 +80,15 @@ class ModelToIdPropertyTransformer implements DataTransformerInterface
                 return $collection;
             }
 
-            return;
+            return null;
         }
 
         if (!$this->multiple) {
             return $this->modelManager->find($this->className, $value);
         }
 
-        if (!is_array($value)) {
-            throw new \UnexpectedValueException(sprintf('Value should be array, %s given.', gettype($value)));
+        if (!\is_array($value)) {
+            throw new \UnexpectedValueException(sprintf('Value should be array, %s given.', \gettype($value)));
         }
 
         foreach ($value as $key => $id) {
@@ -92,7 +96,7 @@ class ModelToIdPropertyTransformer implements DataTransformerInterface
                 continue;
             }
 
-            $collection->add($this->modelManager->find($this->className, $id));
+            $collection[] = $this->modelManager->find($this->className, $id);
         }
 
         return $collection;
@@ -107,19 +111,32 @@ class ModelToIdPropertyTransformer implements DataTransformerInterface
         }
 
         if ($this->multiple) {
-            $isArray = is_array($entityOrCollection);
-            if (!$isArray && substr(get_class($entityOrCollection), -1 * strlen($this->className)) == $this->className) {
-                throw new \InvalidArgumentException('A multiple selection must be passed a collection not a single value. Make sure that form option "multiple=false" is set for many-to-one relation and "multiple=true" is set for many-to-many or one-to-many relations.');
-            } elseif ($isArray || ($entityOrCollection instanceof \ArrayAccess)) {
+            $isArray = \is_array($entityOrCollection);
+            if (!$isArray && substr(\get_class($entityOrCollection), -1 * \strlen($this->className)) === $this->className) {
+                throw new \InvalidArgumentException(
+                    'A multiple selection must be passed a collection not a single value.'
+                    .' Make sure that form option "multiple=false" is set for many-to-one relation and "multiple=true"'
+                    .' is set for many-to-many or one-to-many relations.'
+                );
+            }
+            if ($isArray || ($entityOrCollection instanceof \ArrayAccess)) {
                 $collection = $entityOrCollection;
             } else {
-                throw new \InvalidArgumentException('A multiple selection must be passed a collection not a single value. Make sure that form option "multiple=false" is set for many-to-one relation and "multiple=true" is set for many-to-many or one-to-many relations.');
+                throw new \InvalidArgumentException(
+                    'A multiple selection must be passed a collection not a single value.'
+                    .' Make sure that form option "multiple=false" is set for many-to-one relation and "multiple=true"'
+                    .' is set for many-to-many or one-to-many relations.'
+                );
             }
         } else {
-            if (substr(get_class($entityOrCollection), -1 * strlen($this->className)) == $this->className) {
+            if (substr(\get_class($entityOrCollection), -1 * \strlen($this->className)) === $this->className) {
                 $collection = [$entityOrCollection];
             } elseif ($entityOrCollection instanceof \ArrayAccess) {
-                throw new \InvalidArgumentException('A single selection must be passed a single value not a collection. Make sure that form option "multiple=false" is set for many-to-one relation and "multiple=true" is set for many-to-many or one-to-many relations.');
+                throw new \InvalidArgumentException(
+                    'A single selection must be passed a single value not a collection.'
+                    .' Make sure that form option "multiple=false" is set for many-to-one relation and "multiple=true"'
+                    .' is set for many-to-many or one-to-many relations.'
+                );
             } else {
                 $collection = [$entityOrCollection];
             }
@@ -129,20 +146,25 @@ class ModelToIdPropertyTransformer implements DataTransformerInterface
             throw new \RuntimeException('Please define "property" parameter.');
         }
 
-        foreach ($collection as $entity) {
-            $id = current($this->modelManager->getIdentifierValues($entity));
+        foreach ($collection as $model) {
+            $id = current($this->modelManager->getIdentifierValues($model));
 
             if (null !== $this->toStringCallback) {
-                if (!is_callable($this->toStringCallback)) {
-                    throw new \RuntimeException('Callback in "to_string_callback" option doesn`t contain callable function.');
+                if (!\is_callable($this->toStringCallback)) {
+                    throw new \RuntimeException(
+                        'Callback in "to_string_callback" option doesn`t contain callable function.'
+                    );
                 }
 
-                $label = call_user_func($this->toStringCallback, $entity, $this->property);
+                $label = ($this->toStringCallback)($model, $this->property);
             } else {
                 try {
-                    $label = (string) $entity;
+                    $label = (string) $model;
                 } catch (\Exception $e) {
-                    throw new \RuntimeException(sprintf("Unable to convert the entity %s to String, entity must have a '__toString()' method defined", ClassUtils::getClass($entity)), 0, $e);
+                    throw new \RuntimeException(sprintf(
+                        'Unable to convert the entity %s to String, entity must have a \'__toString()\' method defined',
+                        ClassUtils::getClass($model)
+                    ), 0, $e);
                 }
             }
 

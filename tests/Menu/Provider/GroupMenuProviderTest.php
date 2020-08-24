@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -12,16 +14,17 @@
 namespace Sonata\AdminBundle\Tests\Menu\Provider;
 
 use Knp\Menu\FactoryInterface;
+use Knp\Menu\Integration\Symfony\RoutingExtension;
 use Knp\Menu\ItemInterface;
 use Knp\Menu\MenuFactory;
 use Knp\Menu\MenuItem;
 use Knp\Menu\Provider\MenuProviderInterface;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use PHPUnit_Framework_MockObject_MockObject as MockObject;
 use Sonata\AdminBundle\Admin\AbstractAdmin;
-use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Menu\Provider\GroupMenuProvider;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 
 class GroupMenuProviderTest extends TestCase
@@ -44,7 +47,7 @@ class GroupMenuProviderTest extends TestCase
      */
     private $checker;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->pool = $this->getMockBuilder(Pool::class)->disableOriginalConstructor()->getMock();
         $this->checker = $this
@@ -55,10 +58,27 @@ class GroupMenuProviderTest extends TestCase
 
         $this->factory = new MenuFactory();
 
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
+        $urlGenerator->method('generate')->willReturnCallback(static function (string $name, array $parameters = [], int $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH): string {
+            switch ($referenceType) {
+                case UrlGeneratorInterface::ABSOLUTE_URL:
+                    return sprintf('http://sonata-project/%s%s', $name, $parameters ? '?'.http_build_query($parameters) : '');
+                case UrlGeneratorInterface::ABSOLUTE_PATH:
+                    return sprintf('/%s%s', $name, $parameters ? '?'.http_build_query($parameters) : '');
+                default:
+                    throw new \InvalidArgumentException(sprintf(
+                        'Dummy router does not support the reference type "%s".',
+                        $referenceType
+                    ));
+            }
+        });
+
+        $this->factory->addExtension(new RoutingExtension($urlGenerator));
+
         $this->provider = new GroupMenuProvider($this->factory, $this->pool, $this->checker);
     }
 
-    public function testGroupMenuProviderName()
+    public function testGroupMenuProviderName(): void
     {
         $this->assertTrue($this->provider->has('sonata_group_menu'));
     }
@@ -66,19 +86,17 @@ class GroupMenuProviderTest extends TestCase
     /**
      * NEXT_MAJOR: Remove this test.
      *
-     * @param array $adminGroups
-     *
      * @group legacy
      * @dataProvider getAdminGroups
      */
-    public function testGroupMenuProviderWithoutChecker(array $adminGroups)
+    public function testGroupMenuProviderWithoutChecker(array $adminGroups): void
     {
         $provider = new GroupMenuProvider($this->factory, $this->pool);
 
-        $this->pool->expects($this->once())
+        $this->pool
             ->method('getInstance')
             ->with($this->equalTo('sonata_admin_foo_service'))
-            ->will($this->returnValue($this->getAdminMock()));
+            ->willReturn($this->getAdminMock());
 
         $menu = $provider->get(
             'providerFoo',
@@ -93,7 +111,7 @@ class GroupMenuProviderTest extends TestCase
 
         $children = $menu->getChildren();
 
-        $this->assertCount(2, $children);
+        $this->assertCount(3, $children);
         $this->assertArrayHasKey('foo_admin_label', $children);
         $this->assertArrayHasKey('route_label', $children);
         $this->assertInstanceOf(MenuItem::class, $menu['foo_admin_label']);
@@ -109,18 +127,16 @@ class GroupMenuProviderTest extends TestCase
     }
 
     /**
-     * @param array $adminGroups
-     *
      * @dataProvider getAdminGroups
      */
-    public function testGetMenuProviderWithCheckerGrantedGroupRoles(array $adminGroups)
+    public function testGetMenuProviderWithCheckerGrantedGroupRoles(array $adminGroups): void
     {
-        $this->pool->expects($this->once())
+        $this->pool
             ->method('getInstance')
             ->with($this->equalTo('sonata_admin_foo_service'))
-            ->will($this->returnValue($this->getAdminMock()));
+            ->willReturn($this->getAdminMock());
 
-        $this->checker->expects($this->any())
+        $this->checker
             ->method('isGranted')
             ->willReturn(false);
 
@@ -148,19 +164,100 @@ class GroupMenuProviderTest extends TestCase
         $this->assertSame($extras['label_catalogue'], 'SonataAdminBundle');
     }
 
+    public function unanimousGrantCheckerMock(string $role): bool
+    {
+        return \in_array($role, ['foo', 'bar', 'baz'], true);
+    }
+
+    public function unanimousGrantCheckerNoBazMock(string $role): bool
+    {
+        return \in_array($role, ['foo', 'bar'], true);
+    }
+
     /**
-     * @param array $adminGroups
-     *
+     * @dataProvider getAdminGroupsMultipleRoles
+     */
+    public function testGetMenuProviderWithCheckerGrantedMultipleGroupRoles(
+        array $adminGroups
+    ): void {
+        $this->checker
+            ->method('isGranted')
+            ->willReturnCallback([$this, 'unanimousGrantCheckerMock']);
+
+        $menu = $this->provider->get(
+            'providerFoo',
+            [
+                'name' => 'foo',
+                'group' => $adminGroups,
+            ]
+        );
+
+        $this->assertInstanceOf(ItemInterface::class, $menu);
+
+        $children = $menu->getChildren();
+
+        $this->assertCount(4, $children);
+    }
+
+    /**
+     * @dataProvider getAdminGroupsMultipleRoles
+     */
+    public function testGetMenuProviderWithCheckerGrantedGroupAndItemRoles(
+        array $adminGroups
+    ): void {
+        $this->checker
+            ->method('isGranted')
+            ->willReturnCallback([$this, 'unanimousGrantCheckerNoBazMock']);
+
+        $menu = $this->provider->get(
+            'providerFoo',
+            [
+                'name' => 'foo',
+                'group' => $adminGroups,
+            ]
+        );
+        $isBazItem = $adminGroups['roles'] === ['baz'];
+
+        $this->assertInstanceOf(ItemInterface::class, $menu);
+        $this->assertSame(!$isBazItem, $menu->isDisplayed());
+
+        $children = $menu->getChildren();
+        $this->assertCount($isBazItem ? 0 : 3, $children);
+    }
+
+    /**
+     * @dataProvider getAdminGroupsMultipleRolesOnTop
+     */
+    public function testGetMenuProviderWithCheckerGrantedMultipleGroupRolesOnTop(
+        array $adminGroups
+    ): void {
+        $this->checker
+            ->method('isGranted')
+            ->willReturnCallback([$this, 'unanimousGrantCheckerMock']);
+
+        $menu = $this->provider->get(
+            'providerFoo',
+            [
+                'name' => 'foo',
+                'group' => $adminGroups,
+            ]
+        );
+        $this->assertInstanceOf(ItemInterface::class, $menu);
+
+        $this->assertTrue($menu->isDisplayed());
+    }
+
+    /**
      * @dataProvider getAdminGroups
      */
-    public function testGetMenuProviderWithAdmin(array $adminGroups)
+    public function testGetMenuProviderWithAdmin(array $adminGroups): void
     {
-        $this->pool->expects($this->once())
+        $this->pool
             ->method('getInstance')
             ->with($this->equalTo('sonata_admin_foo_service'))
-            ->will($this->returnValue($this->getAdminMock()));
+            ->willReturn($this->getAdminMock());
 
-        $this->checker->expects($this->any())
+        $this->checker
             ->method('isGranted')
             ->willReturn(true);
 
@@ -177,7 +274,7 @@ class GroupMenuProviderTest extends TestCase
 
         $children = $menu->getChildren();
 
-        $this->assertCount(2, $children);
+        $this->assertCount(3, $children);
         $this->assertArrayHasKey('foo_admin_label', $children);
         $this->assertArrayHasKey('route_label', $children);
         $this->assertInstanceOf(MenuItem::class, $menu['foo_admin_label']);
@@ -185,26 +282,27 @@ class GroupMenuProviderTest extends TestCase
 
         $extras = $menu['foo_admin_label']->getExtras();
         $this->assertArrayHasKey('label_catalogue', $extras);
-        $this->assertSame($extras['label_catalogue'], 'SonataAdminBundle');
+        $this->assertSame('SonataAdminBundle', $extras['label_catalogue']);
 
         $extras = $menu['route_label']->getExtras();
         $this->assertArrayHasKey('label_catalogue', $extras);
-        $this->assertSame($extras['label_catalogue'], 'SonataAdminBundle');
+        $this->assertSame('SonataAdminBundle', $extras['label_catalogue']);
+
+        $this->assertSame('http://sonata-project/FooRoute?foo=bar', $menu['route_label']->getUri());
+        $this->assertSame('/FooRelativeRoute?baz=qux', $menu['relative_route']->getUri());
     }
 
     /**
-     * @param array $adminGroups
-     *
      * @dataProvider getAdminGroups
      */
-    public function testGetKnpMenuWithListRoute(array $adminGroups)
+    public function testGetKnpMenuWithListRoute(array $adminGroups): void
     {
-        $this->pool->expects($this->once())
+        $this->pool
             ->method('getInstance')
             ->with($this->equalTo('sonata_admin_foo_service'))
-            ->will($this->returnValue($this->getAdminMock(false)));
+            ->willReturn($this->getAdminMock(false));
 
-        $this->checker->expects($this->any())
+        $this->checker
             ->method('isGranted')
             ->willReturn(true);
 
@@ -219,22 +317,20 @@ class GroupMenuProviderTest extends TestCase
         $this->assertInstanceOf(ItemInterface::class, $menu);
         $this->assertArrayNotHasKey('foo_admin_label', $menu->getChildren());
         $this->assertArrayHasKey('route_label', $menu->getChildren());
-        $this->assertCount(1, $menu->getChildren());
+        $this->assertCount(2, $menu->getChildren());
     }
 
     /**
-     * @param array $adminGroups
-     *
      * @dataProvider getAdminGroups
      */
-    public function testGetKnpMenuWithGrantedList(array $adminGroups)
+    public function testGetKnpMenuWithGrantedList(array $adminGroups): void
     {
-        $this->pool->expects($this->once())
+        $this->pool
             ->method('getInstance')
             ->with($this->equalTo('sonata_admin_foo_service'))
-            ->will($this->returnValue($this->getAdminMock(true, false)));
+            ->willReturn($this->getAdminMock(true, false));
 
-        $this->checker->expects($this->any())
+        $this->checker
             ->method('isGranted')
             ->willReturn(true);
 
@@ -249,20 +345,18 @@ class GroupMenuProviderTest extends TestCase
         $this->assertInstanceOf(ItemInterface::class, $menu);
         $this->assertArrayNotHasKey('foo_admin_label', $menu->getChildren());
         $this->assertArrayHasKey('route_label', $menu->getChildren());
-        $this->assertCount(1, $menu->getChildren());
+        $this->assertCount(2, $menu->getChildren());
     }
 
     /**
-     * @param array $adminGroupsOnTopOption
-     *
      * @dataProvider getAdminGroupsWithOnTopOption
      */
-    public function testGetMenuProviderOnTopOptions(array $adminGroupsOnTopOption)
+    public function testGetMenuProviderOnTopOptions(array $adminGroupsOnTopOption): void
     {
-        $this->pool->expects($this->once())
+        $this->pool
             ->method('getInstance')
             ->with($this->equalTo('sonata_admin_foo_service'))
-            ->will($this->returnValue($this->getAdminMock(true, false)));
+            ->willReturn($this->getAdminMock(true, false));
 
         $menu = $this->provider->get(
             'providerFoo',
@@ -277,18 +371,16 @@ class GroupMenuProviderTest extends TestCase
     }
 
     /**
-     * @param array $adminGroups
-     *
      * @dataProvider getAdminGroups
      */
-    public function testGetMenuProviderKeepOpenOption(array $adminGroups)
+    public function testGetMenuProviderKeepOpenOption(array $adminGroups): void
     {
-        $this->pool->expects($this->once())
+        $this->pool
             ->method('getInstance')
             ->with($this->equalTo('sonata_admin_foo_service'))
-            ->will($this->returnValue($this->getAdminMock()));
+            ->willReturn($this->getAdminMock());
 
-        $this->checker->expects($this->any())
+        $this->checker
             ->method('isGranted')
             ->willReturn(true);
 
@@ -308,9 +400,33 @@ class GroupMenuProviderTest extends TestCase
     }
 
     /**
-     * @return array
+     * @dataProvider getRootMenuItemWithDifferentUrlTypes
      */
-    public function getAdminGroups()
+    public function testRootMenuItemUrl(string $expectedUrl, array $item): void
+    {
+        $this->pool
+            ->method('getInstance')
+            ->with($this->equalTo('sonata_admin_absolute_url'))
+            ->willReturn($this->getAdminMock());
+
+        $this->checker
+            ->method('isGranted')
+            ->willReturn(true);
+
+        $menu = $this->provider->get(
+            'providerFoo',
+            [
+                'name' => 'foo',
+                'group' => $item,
+            ]
+        );
+
+        $this->assertInstanceOf(ItemInterface::class, $menu);
+        $this->assertSame('foo', $menu->getName());
+        $this->assertSame($expectedUrl, $menu['foo_admin_label']->getUri());
+    }
+
+    public function getAdminGroups(): array
     {
         return [
             [
@@ -322,6 +438,7 @@ class GroupMenuProviderTest extends TestCase
                         [
                             'admin' => 'sonata_admin_foo_service',
                             'label' => 'fooLabel',
+                            'route' => 'FooServiceRoute',
                             'route_absolute' => true,
                         ],
                         [
@@ -332,6 +449,14 @@ class GroupMenuProviderTest extends TestCase
                             'route_absolute' => true,
                             'roles' => [],
                         ],
+                        [
+                            'admin' => '',
+                            'label' => 'relative_route',
+                            'route' => 'FooRelativeRoute',
+                            'route_params' => ['baz' => 'qux'],
+                            'route_absolute' => false,
+                            'roles' => [],
+                        ],
                     ],
                     'item_adds' => [],
                     'roles' => ['foo'],
@@ -340,10 +465,161 @@ class GroupMenuProviderTest extends TestCase
         ];
     }
 
-    /**
-     * @return array
-     */
-    public function getAdminGroupsWithOnTopOption()
+    public function getAdminGroupsMultipleRoles(): array
+    {
+        return [
+            [
+                // group for all roles, children with different roles
+                [
+                    'label' => 'foo',
+                    'icon' => '<i class="fa fa-edit"></i>',
+                    'label_catalogue' => 'SonataAdminBundle',
+                    'items' => [
+                        [
+                            'admin' => '',
+                            'label' => 'route_label1',
+                            'route' => 'FooRoute1',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                            'roles' => ['foo', 'bar'],
+                        ],
+                        [
+                            'admin' => '',
+                            'label' => 'route_label2',
+                            'route' => 'FooRoute2',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                            'roles' => ['foo'],
+                        ],
+                        [
+                            'admin' => '',
+                            'label' => 'route_label3',
+                            'route' => 'FooRoute3',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                            'roles' => ['bar'],
+                        ],
+                        [
+                            'admin' => '',
+                            'label' => 'route_label4',
+                            'route' => 'FooRoute4',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                            'roles' => ['baz'],
+                        ],
+                    ],
+                    'roles' => ['foo', 'bar'],
+                    'item_adds' => [],
+                ],
+            ], [
+                // group for one role, children with different roles
+                [
+                    'label' => 'foo',
+                    'icon' => '<i class="fa fa-edit"></i>',
+                    'label_catalogue' => 'SonataAdminBundle',
+                    'items' => [
+                        [
+                            'admin' => '',
+                            'label' => 'route_label1',
+                            'route' => 'FooRoute1',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                            'roles' => ['foo', 'bar'],
+                        ],
+                        [
+                            'admin' => '',
+                            'label' => 'route_label2',
+                            'route' => 'FooRoute2',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                            'roles' => ['foo'],
+                        ],
+                        [
+                            'admin' => '',
+                            'label' => 'route_label3',
+                            'route' => 'FooRoute3',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                            'roles' => ['bar'],
+                        ],
+                        [
+                            'admin' => '',
+                            'label' => 'route_label4',
+                            'route' => 'FooRoute4',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                            'roles' => ['baz'],
+                        ],
+                    ],
+                    'roles' => ['baz'],
+                    'item_adds' => [],
+                ],
+            ],
+        ];
+    }
+
+    public function getAdminGroupsMultipleRolesOnTop(): array
+    {
+        return [
+            [
+                [
+                    'label' => 'foo1',
+                    'icon' => '<i class="fa fa-edit"></i>',
+                    'label_catalogue' => 'SonataAdminBundle',
+                    'items' => [
+                        [
+                            'admin' => '',
+                            'label' => 'route_label1',
+                            'route' => 'FooRoute1',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                        ],
+                    ],
+                    'item_adds' => [],
+                    'roles' => ['foo', 'bar'],
+                    'on_top' => true,
+                ],
+            ], [
+                [
+                    'label' => 'foo2',
+                    'icon' => '<i class="fa fa-edit"></i>',
+                    'label_catalogue' => 'SonataAdminBundle',
+                    'items' => [
+                        [
+                            'admin' => '',
+                            'label' => 'route_label2',
+                            'route' => 'FooRoute2',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                        ],
+                    ],
+                    'item_adds' => [],
+                    'roles' => ['foo'],
+                    'on_top' => true,
+                ],
+            ], [
+                [
+                    'label' => 'foo3',
+                    'icon' => '<i class="fa fa-edit"></i>',
+                    'label_catalogue' => 'SonataAdminBundle',
+                    'items' => [
+                        [
+                            'admin' => '',
+                            'label' => 'route_label3',
+                            'route' => 'FooRoute3',
+                            'route_params' => ['foo' => 'bar'],
+                            'route_absolute' => true,
+                        ],
+                    ],
+                    'item_adds' => [],
+                    'roles' => ['bar'],
+                    'on_top' => true,
+                ],
+            ],
+        ];
+    }
+
+    public function getAdminGroupsWithOnTopOption(): array
     {
         return [
             [
@@ -367,36 +643,84 @@ class GroupMenuProviderTest extends TestCase
         ];
     }
 
-    /**
-     * @param bool $hasRoute
-     * @param bool $isGranted
-     *
-     * @return MockObject|AdminInterface
-     */
-    private function getAdminMock($hasRoute = true, $isGranted = true)
+    public function getRootMenuItemWithDifferentUrlTypes(): iterable
+    {
+        yield 'absolute_url' => [
+            'http://sonata-project/list',
+            [
+                'label' => 'foo',
+                'icon' => '<i class="fa fa-edit"></i>',
+                'label_catalogue' => 'SonataAdminBundle',
+                'items' => [
+                    [
+                        'admin' => 'sonata_admin_absolute_url',
+                        'label' => 'fooLabel',
+                        'route' => 'FooAbsoulteRoute',
+                        'route_absolute' => true,
+                    ],
+                ],
+                'item_adds' => [],
+                'roles' => ['foo'],
+            ],
+        ];
+
+        yield 'absolute_path' => [
+            '/list',
+            [
+                'label' => 'foo',
+                'icon' => '<i class="fa fa-edit"></i>',
+                'label_catalogue' => 'SonataAdminBundle',
+                'items' => [
+                    [
+                        'admin' => 'sonata_admin_absolute_url',
+                        'label' => 'fooLabel',
+                        'route' => 'FooAbsolutePath',
+                        'route_absolute' => false,
+                    ],
+                ],
+                'item_adds' => [],
+                'roles' => ['foo'],
+            ],
+        ];
+    }
+
+    private function getAdminMock(bool $hasRoute = true, bool $isGranted = true): AbstractAdmin
     {
         $admin = $this->createMock(AbstractAdmin::class);
         $admin->expects($this->once())
             ->method('hasRoute')
             ->with($this->equalTo('list'))
-            ->will($this->returnValue($hasRoute));
+            ->willReturn($hasRoute);
 
-        $admin->expects($this->any())
+        $admin
             ->method('hasAccess')
             ->with($this->equalTo('list'))
-            ->will($this->returnValue($isGranted));
+            ->willReturn($isGranted);
 
-        $admin->expects($this->any())
+        $admin
             ->method('getLabel')
-            ->will($this->returnValue('foo_admin_label'));
+            ->willReturn('foo_admin_label');
 
-        $admin->expects($this->any())
+        $admin
             ->method('generateMenuUrl')
-            ->will($this->returnValue([]));
+            ->willReturnCallback(static function (string $name, array $parameters = [], int $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH): array {
+                if (!\in_array($referenceType, [UrlGeneratorInterface::ABSOLUTE_URL, UrlGeneratorInterface::ABSOLUTE_PATH], true)) {
+                    throw new \InvalidArgumentException(sprintf(
+                        'Dummy router does not support the reference type "%s".',
+                        $referenceType
+                    ));
+                }
 
-        $admin->expects($this->any())
+                return [
+                    'route' => $name,
+                    'routeParameters' => $parameters,
+                    'routeAbsolute' => UrlGeneratorInterface::ABSOLUTE_URL === $referenceType,
+                ];
+            });
+
+        $admin
             ->method('getTranslationDomain')
-            ->will($this->returnValue('SonataAdminBundle'));
+            ->willReturn('SonataAdminBundle');
 
         return $admin;
     }

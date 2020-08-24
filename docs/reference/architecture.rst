@@ -1,13 +1,13 @@
 Architecture
 ============
 
-The architecture of the ``SonataAdminBundle`` is primarily inspired by the Django Admin
-Project, which is truly a great project. More information can be found at the
-`Django Project Website`_.
+The architecture of the ``SonataAdminBundle`` is primarily inspired by
+the Django Admin Project, which is truly a great project. More information
+can be found at the `Django Project Website`_.
 
-If you followed the instructions on the :doc:`../getting_started/creating_an_admin` page, you should by
-now have an ``Admin`` class and an ``Admin`` service. In this chapter, we'll discuss more in
-depth how it works.
+If you followed the instructions on the :doc:`../getting_started/creating_an_admin`
+page, you should by now have an ``Admin`` class and an ``Admin`` service.
+In this chapter, we'll discuss more in depth how it works.
 
 The Admin Class
 ---------------
@@ -29,12 +29,10 @@ show                The fields used to show the entity
 batch actions       Actions that can be performed on a group of entities (e.g. bulk delete)
 =============       =========================================================================
 
-
-The ``Sonata\AdminBundle\Admin\AbstractAdmin`` class is provided as an easy way to
-map your models, by extending it. However, any implementation of the
-``Sonata\AdminBundle\Admin\AdminInterface`` can be used to define an ``Admin``
-service. For each ``Admin`` service, the following required dependencies are
-automatically injected by the bundle:
+The ``Sonata\AdminBundle\Admin\AbstractAdmin`` class is provided to map your models, by extending it.
+However, any implementation of the ``Sonata\AdminBundle\Admin\AdminInterface`` can be used to define
+an ``Admin`` service. For each ``Admin`` service, the following required dependencies are automatically
+injected by the bundle:
 
 =========================       =========================================================================
 Class                           Description
@@ -61,43 +59,41 @@ MenuFactory                     generates the side menu, depending on the curren
     If you wish to learn more about how they are used, check the respective documentation
     chapter. In most cases, you won't need to worry about their underlying implementation.
 
-
 All of these dependencies have default values that you can override when declaring any of
-your ``Admin`` services. This is done using a ``call`` to the matching ``setter`` :
+your ``Admin`` services. This is done using a ``call`` to the matching ``setter``:
 
 .. configuration-block::
-
-    .. code-block:: xml
-
-        <service id="app.admin.post" class="AppBundle\Admin\PostAdmin">
-              <tag name="sonata.admin" manager_type="orm" group="Content" label="Post" />
-              <argument />
-              <argument>AppBundle\Entity\Post</argument>
-              <argument />
-              <call method="setLabelTranslatorStrategy">
-                  <argument type="service" id="sonata.admin.label.strategy.underscore" />
-              </call>
-          </service>
 
     .. code-block:: yaml
 
         services:
             app.admin.post:
-                class: AppBundle\Admin\PostAdmin
-                tags:
-                    - { name: sonata.admin, manager_type: orm, group: "Content", label: "Post" }
+                class: App\Admin\PostAdmin
                 arguments:
                     - ~
-                    - AppBundle\Entity\Post
+                    - App\Entity\Post
                     - ~
                 calls:
-                    - [ setLabelTranslatorStrategy, ["@sonata.admin.label.strategy.underscore"]]
-                public: true
+                    - [setLabelTranslatorStrategy, ['@sonata.admin.label.strategy.underscore']]
+                tags:
+                    - { name: sonata.admin, manager_type: orm, group: 'Content', label: 'Post' }
 
-Here, we declare the same ``Admin`` service as in the :doc:`../getting_started/creating_an_admin` chapter, but using a
-different label translator strategy, replacing the default one. Notice that
+    .. code-block:: xml
+
+        <service id="app.admin.post" class="App\Admin\PostAdmin">
+              <argument/>
+              <argument>App\Entity\Post</argument>
+              <argument/>
+              <call method="setLabelTranslatorStrategy">
+                  <argument type="service" id="sonata.admin.label.strategy.underscore"/>
+              </call>
+              <tag name="sonata.admin" manager_type="orm" group="Content" label="Post"/>
+          </service>
+
+Here, we declare the same ``Admin`` service as in the :doc:`../getting_started/creating_an_admin`
+chapter, but using a different label translator strategy, replacing the default one. Notice that
 ``sonata.admin.label.strategy.underscore`` is a service provided by ``SonataAdminBundle``,
-but you could just as easily use a service of your own.
+but you could use a service of your own.
 
 CRUDController
 --------------
@@ -119,36 +115,35 @@ the Dependency Injection Container (DIC).
 This is particularly useful if you decide to extend the ``CRUDController`` to
 add new actions or change the behavior of existing ones. You can specify which controller
 to use when declaring the ``Admin`` service by passing it as the 3rd argument. For example
-to set the controller to ``AppBundle:PostAdmin``:
+to set the controller to ``App\Controller\PostAdminController``:
 
 .. configuration-block::
-
-    .. code-block:: xml
-
-        <service id="app.admin.post" class="AppBundle\Admin\PostAdmin">
-            <tag name="sonata.admin" manager_type="orm" group="Content" label="Post" />
-            <argument />
-            <argument>AppBundle\Entity\Post</argument>
-            <argument>AppBundle:PostAdmin</argument>
-            <call method="setTranslationDomain">
-                <argument>AppBundle</argument>
-            </call>
-        </service>
 
     .. code-block:: yaml
 
         services:
             app.admin.post:
-                class: AppBundle\Admin\PostAdmin
-                tags:
-                    - { name: sonata.admin, manager_type: orm, group: "Content", label: "Post" }
+                class: App\Admin\PostAdmin
                 arguments:
                     - ~
-                    - AppBundle\Entity\Post
-                    - AppBundle:PostAdmin
+                    - App\Entity\Post
+                    - App\Controller\PostAdminController
                 calls:
-                    - [ setTranslationDomain, [AppBundle]]
-                public: true
+                    - [setTranslationDomain, ['App']]
+                tags:
+                    - { name: sonata.admin, manager_type: orm, group: 'Content', label: 'Post' }
+
+    .. code-block:: xml
+
+        <service id="app.admin.post" class="App\Admin\PostAdmin">
+            <argument/>
+            <argument>App\Entity\Post</argument>
+            <argument>App\Controller\PostAdminController</argument>
+            <call method="setTranslationDomain">
+                <argument>App</argument>
+            </call>
+            <tag name="sonata.admin" manager_type="orm" group="Content" label="Post"/>
+        </service>
 
 When extending ``CRUDController``, remember that the ``Admin`` class already has
 a set of automatically injected dependencies that are useful when implementing several
@@ -173,36 +168,48 @@ Your ``Admin`` class defines which of your model's fields will be available in e
 action defined in your ``CRUDController``. So, for each action, a list of field mappings
 is generated. These lists are implemented using the ``FieldDescriptionCollection`` class
 which stores instances of ``FieldDescriptionInterface``. Picking up on our previous
-``PostAdmin`` class example:
+``PostAdmin`` class example::
 
-.. code-block:: php
+    // src/Admin/PostAdmin.php
 
-    <?php
-    // src/AppBundle/Admin/PostAdmin.php
-
-    namespace AppBundle\Admin;
+    namespace App\Admin;
 
     use Sonata\AdminBundle\Admin\AbstractAdmin;
     use Sonata\AdminBundle\Datagrid\ListMapper;
     use Sonata\AdminBundle\Datagrid\DatagridMapper;
     use Sonata\AdminBundle\Form\FormMapper;
     use Sonata\AdminBundle\Show\ShowMapper;
+    use Symfony\Bridge\Doctrine\Form\Type\EntityType;
+    use Symfony\Component\Form\Extension\Core\Type\TextType;
+    use App\Entity\User;
 
-    class PostAdmin extends AbstractAdmin
+    final class PostAdmin extends AbstractAdmin
     {
         // Fields to be shown on create/edit forms
         protected function configureFormFields(FormMapper $formMapper)
         {
             $formMapper
-                ->add('title', 'text', [
+                ->add('title', TextType:class, [
                     'label' => 'Post Title'
                 ])
-                ->add('author', 'entity', [
-                    'class' => 'AppBundle\Entity\User'
+                ->add('author', EntityType::class, [
+                    'class' => User::class
+                ])
+
+                // "privateNotes" field will be rendered only if the authenticated
+                // user is granted with the "ROLE_ADMIN_MODERATOR" role
+                ->add('privateNotes', null, [], [
+                    'role' => 'ROLE_ADMIN_MODERATOR'
                 ])
 
                 // if no type is specified, SonataAdminBundle tries to guess it
                 ->add('body')
+
+                // conditionally add "status" field if the subject already exists
+                // `ifFalse()` is also available to build this kind of condition
+                ->ifTrue($this->hasSubject())
+                    ->add('status')
+                ->ifEnd()
 
                 // ...
             ;
@@ -214,6 +221,9 @@ which stores instances of ``FieldDescriptionInterface``. Picking up on our previ
             $datagridMapper
                 ->add('title')
                 ->add('author')
+                ->add('privateNotes', null, [], null, null, [
+                    'role' => 'ROLE_ADMIN_MODERATOR'
+                ])
             ;
         }
 
@@ -224,6 +234,9 @@ which stores instances of ``FieldDescriptionInterface``. Picking up on our previ
                 ->addIdentifier('title')
                 ->add('slug')
                 ->add('author')
+                ->add('privateNotes', null, [
+                    'role' => 'ROLE_ADMIN_MODERATOR'
+                ])
             ;
         }
 
@@ -235,6 +248,9 @@ which stores instances of ``FieldDescriptionInterface``. Picking up on our previ
                 ->add('title')
                 ->add('slug')
                 ->add('author')
+                ->add('privateNotes', null, [
+                    'role' => 'ROLE_ADMIN_MODERATOR'
+                ])
             ;
         }
     }
@@ -242,14 +258,14 @@ which stores instances of ``FieldDescriptionInterface``. Picking up on our previ
 Internally, the provided ``Admin`` class will use these three functions to create three
 ``FieldDescriptionCollection`` instances:
 
-* ``$formFieldDescriptions``, containing three ``FieldDescriptionInterface`` instances
-  for title, author and body
-* ``$filterFieldDescriptions``, containing two ``FieldDescriptionInterface`` instances
-  for title and author
-* ``$listFieldDescriptions``, containing three ``FieldDescriptionInterface`` instances
-  for title, slug and author
-* ``$showFieldDescriptions``, containing four ``FieldDescriptionInterface`` instances
-  for id, title, slug and author
+* ``$formFieldDescriptions``, containing four (and conditionally five) ``FieldDescriptionInterface``
+  instances for title, author, body and privateNotes (and status, if the condition is met)
+* ``$filterFieldDescriptions``, containing three ``FieldDescriptionInterface`` instances
+  for title, author and privateNotes
+* ``$listFieldDescriptions``, containing four ``FieldDescriptionInterface`` instances
+  for title, slug, author and privateNotes
+* ``$showFieldDescriptions``, containing five ``FieldDescriptionInterface`` instances
+  for id, title, slug, author and privateNotes
 
 The actual ``FieldDescription`` implementation is provided by the storage abstraction
 bundle that you choose during the installation process, based on the
@@ -268,7 +284,7 @@ Templates
 ---------
 
 Like most actions, ``CRUDController`` actions use view files to render their output.
-``SonataAdminBundle`` provides ready to use views as well as ways to easily customize them.
+``SonataAdminBundle`` provides ready to use views as well as ways to customize them.
 
 The current implementation uses ``Twig`` as the template engine. All templates
 are located in the ``Resources/views`` directory of the bundle.
@@ -313,5 +329,5 @@ DIC, handles the ``Admin`` classes, lazy-loading them on demand (to reduce overh
 and matching each of them to a group. It is also responsible for handling the top level
 template files, administration panel title and logo.
 
-.. _`Django Project Website`: http://www.djangoproject.com/
-.. _`CRUD`: http://en.wikipedia.org/wiki/CRUD
+.. _`Django Project Website`: https://www.djangoproject.com/
+.. _`CRUD`: https://en.wikipedia.org/wiki/CRUD

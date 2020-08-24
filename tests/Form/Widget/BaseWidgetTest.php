@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -11,10 +13,11 @@
 
 namespace Sonata\AdminBundle\Tests\Form\Widget;
 
-use Sonata\CoreBundle\Test\AbstractWidgetTestCase;
+use Sonata\Form\Test\AbstractWidgetTestCase;
 use Symfony\Bridge\Twig\Extension\TranslationExtension;
 use Symfony\Bridge\Twig\Form\TwigRendererEngine;
 use Symfony\Bundle\FrameworkBundle\Tests\Templating\Helper\Fixtures\StubTranslator;
+use Twig\Environment;
 
 /**
  * Base class for tests checking rendering of form widgets with form_admin_fields.html.twig and
@@ -28,7 +31,7 @@ abstract class BaseWidgetTest extends AbstractWidgetTestCase
      *
      * @var string
      */
-    protected $type = null;
+    protected $type;
 
     /**
      * @var array
@@ -50,7 +53,7 @@ abstract class BaseWidgetTest extends AbstractWidgetTestCase
     /**
      * {@inheritdoc}
      */
-    protected function getEnvironment()
+    protected function getEnvironment(): Environment
     {
         $environment = parent::getEnvironment();
         $environment->addGlobal('sonata_admin', $this->getSonataAdmin());
@@ -64,14 +67,16 @@ abstract class BaseWidgetTest extends AbstractWidgetTestCase
     /**
      * {@inheritdoc}
      */
-    protected function getRenderingEngine(\Twig_Environment $environment = null)
+    protected function getRenderingEngine(?Environment $environment = null): TwigRendererEngine
     {
-        if (!in_array($this->type, ['form', 'filter'])) {
-            throw new \Exception('Please override $this->type in your test class specifying template to use (either form or filter)');
+        if (!\in_array($this->type, ['form', 'filter'], true)) {
+            throw new \Exception(
+                'Please override $this->type in your test class specifying template to use (either form or filter)'
+            );
         }
 
         return new TwigRendererEngine(
-            [$this->type.'_admin_fields.html.twig'],
+            [sprintf('%s_admin_fields.html.twig', $this->type)],
             $environment
         );
     }
@@ -87,10 +92,10 @@ abstract class BaseWidgetTest extends AbstractWidgetTestCase
     /**
      * {@inheritdoc}
      */
-    protected function getTemplatePaths()
+    protected function getTemplatePaths(): array
     {
         return array_merge(parent::getTemplatePaths(), [
-            __DIR__.'/../../../src/Resources/views/Form',
+            sprintf('%s/../../../src/Resources/views/Form', __DIR__),
         ]);
     }
 }

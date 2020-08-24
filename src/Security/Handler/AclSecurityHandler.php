@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -18,6 +20,7 @@ use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 use Symfony\Component\Security\Acl\Exception\AclNotFoundException;
 use Symfony\Component\Security\Acl\Exception\NotAllAclsFoundException;
 use Symfony\Component\Security\Acl\Model\AclInterface;
+use Symfony\Component\Security\Acl\Model\MutableAclInterface;
 use Symfony\Component\Security\Acl\Model\MutableAclProviderInterface;
 use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
@@ -25,6 +28,8 @@ use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
 
 /**
+ * @final since sonata-project/admin-bundle 3.52
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 class AclSecurityHandler implements AclSecurityHandlerInterface
@@ -47,17 +52,17 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
     /**
      * @var array
      */
-    protected $superAdminRoles;
+    protected $superAdminRoles = [];
 
     /**
      * @var array
      */
-    protected $adminPermissions;
+    protected $adminPermissions = [];
 
     /**
      * @var array
      */
-    protected $objectPermissions;
+    protected $objectPermissions = [];
 
     /**
      * @var string
@@ -65,26 +70,15 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
     protected $maskBuilderClass;
 
     /**
-     * @param TokenStorageInterface         $tokenStorage
-     * @param AuthorizationCheckerInterface $authorizationChecker
-     * @param string                        $maskBuilderClass
+     * @param string $maskBuilderClass
      */
     public function __construct(
-        $tokenStorage,
-        $authorizationChecker,
+        TokenStorageInterface $tokenStorage,
+        AuthorizationCheckerInterface $authorizationChecker,
         MutableAclProviderInterface $aclProvider,
         $maskBuilderClass,
         array $superAdminRoles
     ) {
-        // NEXT_MAJOR: Move TokenStorageInterface check to method signature
-        if (!$tokenStorage instanceof TokenStorageInterface) {
-            throw new \InvalidArgumentException('Argument 1 should be an instance of Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface');
-        }
-        // NEXT_MAJOR: Move AuthorizationCheckerInterface check to method signature
-        if (!$authorizationChecker instanceof AuthorizationCheckerInterface) {
-            throw new \InvalidArgumentException('Argument 2 should be an instance of Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface');
-        }
-
         $this->tokenStorage = $tokenStorage;
         $this->authorizationChecker = $authorizationChecker;
         $this->aclProvider = $aclProvider;
@@ -114,12 +108,13 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
 
     public function isGranted(AdminInterface $admin, $attributes, $object = null)
     {
-        if (!is_array($attributes)) {
+        if (!\is_array($attributes)) {
             $attributes = [$attributes];
         }
 
         try {
-            return $this->authorizationChecker->isGranted($this->superAdminRoles) || $this->authorizationChecker->isGranted($attributes, $object);
+            return $this->isAnyGranted($this->superAdminRoles) ||
+                $this->isAnyGranted($attributes, $object);
         } catch (AuthenticationCredentialsNotFoundException $e) {
             return false;
         }
@@ -127,7 +122,7 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
 
     public function getBaseRole(AdminInterface $admin)
     {
-        return 'ROLE_'.str_replace('.', '_', strtoupper($admin->getCode())).'_%s';
+        return sprintf('ROLE_%s_%%s', str_replace('.', '_', strtoupper($admin->getCode())));
     }
 
     public function buildSecurityInformation(AdminInterface $admin)
@@ -170,8 +165,10 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
     {
         try {
             $acl = $this->aclProvider->findAcl($objectIdentity);
+            // todo - remove `assert` statement after https://github.com/phpstan/phpstan-symfony/pull/92 is released
+            \assert($acl instanceof MutableAclInterface);
         } catch (AclNotFoundException $e) {
-            return;
+            return null;
         }
 
         return $acl;
@@ -190,16 +187,42 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
         return $acls;
     }
 
-    public function addObjectOwner(AclInterface $acl, UserSecurityIdentity $securityIdentity = null)
+    /**
+     * NEXT_MAJOR: change signature to `addObjectOwner(MutableAclInterface $acl, ?UserSecurityIdentity $securityIdentity = null): void`.
+     *
+     * @param MutableAclInterface $acl
+     *
+     * @return void
+     */
+    public function addObjectOwner(AclInterface $acl, ?UserSecurityIdentity $securityIdentity = null)
     {
+        // NEXT_MAJOR: remove `if` condition
+        if (!$acl instanceof MutableAclInterface) {
+            throw new \TypeError(sprintf(
+                'Argument 1 passed to "%s()" must implement "%s".',
+                __METHOD__,
+                MutableAclInterface::class
+            ));
+        }
         if (false === $this->findClassAceIndexByUsername($acl, $securityIdentity->getUsername())) {
             // only add if not already exists
-            $acl->insertObjectAce($securityIdentity, constant("$this->maskBuilderClass::MASK_OWNER"));
+            $acl->insertObjectAce($securityIdentity, \constant("$this->maskBuilderClass::MASK_OWNER"));
         }
     }
 
+    /**
+     * Add the object class ACE's to the object ACL.
+     *
+     * NEXT_MAJOR: change signature to `addObjectClassAces(MutableAclInterface $acl, array $roleInformation = []): void`.
+     *
+     * @param MutableAclInterface $acl
+     *
+     * @return void
+     */
     public function addObjectClassAces(AclInterface $acl, array $roleInformation = [])
     {
+        // NEXT_MAJOR: remove `assert` statement
+        \assert($acl instanceof MutableAclInterface);
         $builder = new $this->maskBuilderClass();
 
         foreach ($roleInformation as $role => $permissions) {
@@ -208,7 +231,7 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
 
             foreach ($permissions as $permission) {
                 // add only the object permissions
-                if (in_array($permission, $this->getObjectPermissions())) {
+                if (\in_array($permission, $this->getObjectPermissions(), true)) {
                     $builder->add($permission);
                     $hasRole = true;
                 }
@@ -228,13 +251,27 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
         }
     }
 
+    /**
+     * NEXT_MAJOR: change signature to `createAcl(ObjectIdentityInterface $objectIdentity): MutableAclInterface`.
+     *
+     * @return MutableAclInterface
+     */
     public function createAcl(ObjectIdentityInterface $objectIdentity)
     {
         return $this->aclProvider->createAcl($objectIdentity);
     }
 
+    /**
+     * NEXT_MAJOR: change signature to `updateAcl(MutableAclInterface $acl): void`.
+     *
+     * @param MutableAclInterface $acl
+     *
+     * @@return void
+     */
     public function updateAcl(AclInterface $acl)
     {
+        // NEXT_MAJOR: remove `assert` statement
+        \assert($acl instanceof MutableAclInterface);
         $this->aclProvider->updateAcl($acl);
     }
 
@@ -243,6 +280,13 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
         $this->aclProvider->deleteAcl($objectIdentity);
     }
 
+    /**
+     * NEXT_MAJOR: change signature to `findClassAceIndexByRole(MutableAclInterface $acl, string $role): int|string|false`.
+     *
+     * @param MutableAclInterface $acl
+     *
+     * @return array-key|false
+     */
     public function findClassAceIndexByRole(AclInterface $acl, $role)
     {
         foreach ($acl->getClassAces() as $index => $entry) {
@@ -254,11 +298,29 @@ class AclSecurityHandler implements AclSecurityHandlerInterface
         return false;
     }
 
+    /**
+     * NEXT_MAJOR: change signature to `findClassAceIndexByUsername(MutableAclInterface $acl, string $username): int|string|false`.
+     *
+     * @param MutableAclInterface $acl
+     *
+     * @return array-key|false
+     */
     public function findClassAceIndexByUsername(AclInterface $acl, $username)
     {
         foreach ($acl->getClassAces() as $index => $entry) {
             if ($entry->getSecurityIdentity() instanceof UserSecurityIdentity && $entry->getSecurityIdentity()->getUsername() === $username) {
                 return $index;
+            }
+        }
+
+        return false;
+    }
+
+    private function isAnyGranted(array $attributes, $subject = null): bool
+    {
+        foreach ($attributes as $attribute) {
+            if ($this->authorizationChecker->isGranted($attribute, $subject)) {
+                return true;
             }
         }
 
