@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Tests\Maker;
 
 use PHPUnit\Framework\TestCase;
-use Prophecy\Argument;
 use Sonata\AdminBundle\Maker\AdminMaker;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\Foo;
@@ -23,6 +22,7 @@ use Symfony\Bundle\MakerBundle\FileManager;
 use Symfony\Bundle\MakerBundle\Generator;
 use Symfony\Bundle\MakerBundle\Util\AutoloaderUtil;
 use Symfony\Bundle\MakerBundle\Util\MakerFileLinkFormatter;
+use Symfony\Bundle\MakerBundle\Util\PhpCompatUtil;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputDefinition;
@@ -73,11 +73,11 @@ class AdminMakerTest extends TestCase
 
     protected function setup(): void
     {
-        $managerOrmProxy = $this->prophesize(ModelManagerInterface::class);
-        $managerOrmProxy->getExportFields(Argument::exact(Foo::class))
+        $managerOrmProxy = $this->createStub(ModelManagerInterface::class);
+        $managerOrmProxy->method('getExportFields')->with(Foo::class)
             ->willReturn(['bar', 'baz']);
 
-        $this->modelManagers = ['sonata.admin.manager.orm' => $managerOrmProxy->reveal()];
+        $this->modelManagers = ['sonata.admin.manager.orm' => $managerOrmProxy];
         $this->servicesFile = sprintf('%s.yml', lcg_value());
         $this->projectDirectory = sprintf('%s/sonata-admin-bundle/', sys_get_temp_dir());
         $this->filesystem = new Filesystem();
@@ -132,7 +132,11 @@ class AdminMakerTest extends TestCase
         );
         $fileManager->setIO($this->io);
 
-        $this->generator = new Generator($fileManager, 'Sonata\AdminBundle\Tests');
+        $this->generator = new Generator(
+            $fileManager,
+            'Sonata\AdminBundle\Tests',
+            new PhpCompatUtil($fileManager)
+        );
         $maker->generate($this->input, $this->io, $this->generator);
     }
 }

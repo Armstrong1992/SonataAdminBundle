@@ -25,6 +25,8 @@ interface AclSecurityHandlerInterface extends SecurityHandlerInterface
 {
     /**
      * Set the permissions not related to an object instance and also to be available when objects do not exist.
+     *
+     * @return void
      */
     public function setAdminPermissions(array $permissions);
 
@@ -37,6 +39,8 @@ interface AclSecurityHandlerInterface extends SecurityHandlerInterface
 
     /**
      * Set the permissions related to an object instance.
+     *
+     * @return void
      */
     public function setObjectPermissions(array $permissions);
 
@@ -82,7 +86,8 @@ interface AclSecurityHandlerInterface extends SecurityHandlerInterface
      *
      * NEXT_MAJOR: change signature to `addObjectClassAces(MutableAclInterface $acl, array $roleInformation = []): void`.
      *
-     * @param MutableAclInterface $acl
+     * @param MutableAclInterface     $acl
+     * @param array<string, string[]> $roleInformation
      *
      * @return void
      */
@@ -110,6 +115,8 @@ interface AclSecurityHandlerInterface extends SecurityHandlerInterface
 
     /**
      * Delete the ACL.
+     *
+     * @return void
      */
     public function deleteAcl(ObjectIdentityInterface $objectIdentity);
 

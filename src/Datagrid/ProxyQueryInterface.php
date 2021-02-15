@@ -44,7 +44,7 @@ interface ProxyQueryInterface
     public function setSortBy($parentAssociationMappings, $fieldMapping);
 
     /**
-     * @return string
+     * @return string|null
      */
     public function getSortBy();
 
@@ -56,7 +56,7 @@ interface ProxyQueryInterface
     public function setSortOrder($sortOrder);
 
     /**
-     * @return string
+     * @return string|null
      */
     public function getSortOrder();
 
@@ -94,11 +94,19 @@ interface ProxyQueryInterface
     public function getMaxResults();
 
     /**
+     * NEXT_MAJOR: Remove this method from the interface.
+     *
+     * @deprecated since sonata-project/admin-bundle 3.76, to be removed in 4.0.
+     *
      * @return int
      */
     public function getUniqueParameterId();
 
     /**
+     * NEXT_MAJOR: Remove this method from the interface.
+     *
+     * @deprecated since sonata-project/admin-bundle 3.76, to be removed in 4.0.
+     *
      * @return string
      */
     public function entityJoin(array $associationMappings);

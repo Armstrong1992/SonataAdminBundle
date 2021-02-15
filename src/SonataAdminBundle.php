@@ -16,6 +16,8 @@ namespace Sonata\AdminBundle;
 use Mopa\Bundle\BootstrapBundle\Form\Type\TabType;
 use Sonata\AdminBundle\DependencyInjection\Compiler\AddDependencyCallsCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\Compiler\AddFilterTypeCompilerPass;
+use Sonata\AdminBundle\DependencyInjection\Compiler\AdminMakerCompilerPass;
+use Sonata\AdminBundle\DependencyInjection\Compiler\AdminSearchCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\Compiler\ExtensionCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\Compiler\GlobalVariablesCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\Compiler\ModelManagerCompilerPass;
@@ -50,11 +52,13 @@ class SonataAdminBundle extends Bundle
     {
         $container->addCompilerPass(new AddDependencyCallsCompilerPass());
         $container->addCompilerPass(new AddFilterTypeCompilerPass());
+        $container->addCompilerPass(new AdminSearchCompilerPass());
         $container->addCompilerPass(new ExtensionCompilerPass());
         $container->addCompilerPass(new GlobalVariablesCompilerPass());
         $container->addCompilerPass(new ModelManagerCompilerPass());
         $container->addCompilerPass(new ObjectAclManipulatorCompilerPass());
         $container->addCompilerPass(new TwigStringExtensionCompilerPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 1);
+        $container->addCompilerPass(new AdminMakerCompilerPass());
 
         $this->registerFormMapping();
     }

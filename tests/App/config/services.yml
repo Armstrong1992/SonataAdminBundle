@@ -34,8 +34,16 @@ services:
             - '@form.factory'
             - '@sonata.admin.pager.test'
 
+    sonata.admin.data_source.test:
+        class: Sonata\AdminBundle\Tests\App\Exporter\DataSource
+
     Sonata\AdminBundle\Tests\App\Admin\FooAdmin:
-        arguments: [~, Sonata\AdminBundle\Tests\App\Model\Foo, ~]
+        arguments: [~, Sonata\AdminBundle\Tests\App\Model\Foo, Sonata\AdminBundle\Controller\CRUDController]
+        tags:
+            - {name: sonata.admin, manager_type: test, label: Foo}
+
+    Sonata\AdminBundle\Tests\App\Admin\FooAdminWithCustomController:
+        arguments: [~, Sonata\AdminBundle\Tests\App\Model\Foo, Sonata\AdminBundle\Tests\App\Controller\CustomCRUDController]
         tags:
             - {name: sonata.admin, manager_type: test, label: Foo}
 

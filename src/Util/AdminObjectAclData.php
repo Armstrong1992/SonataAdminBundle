@@ -30,7 +30,7 @@ use Symfony\Component\Security\Acl\Model\MutableAclInterface;
 class AdminObjectAclData
 {
     /**
-     * @var array Permissions managed only by a OWNER
+     * @var string[] Permissions managed only by a OWNER
      */
     protected static $ownerPermissions = ['MASTER', 'OWNER'];
 
@@ -55,33 +55,37 @@ class AdminObjectAclData
     protected $aclRoles;
 
     /**
-     * @var array Cache of masks
+     * @var array<string, mixed> Cache of masks
      */
     protected $masks = [];
 
     /**
-     * @var FormInterface
+     * @var FormInterface|null
      */
     protected $aclUsersForm;
 
     /**
-     * @var FormInterface
+     * @var FormInterface|null
      */
     protected $aclRolesForm;
 
     /**
-     * @var MutableAclInterface
+     * @var MutableAclInterface|null
      */
     protected $acl;
 
     /**
      * @var string
+     *
+     * @phpstan-var class-string
      */
     protected $maskBuilderClass;
 
     /**
      * @param object $object
      * @param string $maskBuilderClass
+     *
+     * @phpstan-param class-string $maskBuilderClass
      */
     public function __construct(
         AdminInterface $admin,
@@ -157,7 +161,7 @@ class AdminObjectAclData
     /**
      * Gets ACL.
      *
-     * @return MutableAclInterface
+     * @return MutableAclInterface|null
      */
     public function getAcl()
     {
@@ -167,7 +171,7 @@ class AdminObjectAclData
     /**
      * Gets masks.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     public function getMasks()
     {
@@ -227,7 +231,7 @@ class AdminObjectAclData
     /**
      * Gets ACL users form.
      *
-     * @return FormInterface
+     * @return FormInterface|null
      */
     public function getAclUsersForm()
     {
@@ -249,7 +253,7 @@ class AdminObjectAclData
     /**
      * Gets ACL roles form.
      *
-     * @return FormInterface
+     * @return FormInterface|null
      */
     public function getAclRolesForm()
     {
@@ -317,7 +321,7 @@ class AdminObjectAclData
     }
 
     /**
-     * @return array
+     * @return array<string, string[]>
      */
     public function getSecurityInformation()
     {

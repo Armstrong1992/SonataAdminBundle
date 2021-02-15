@@ -19,12 +19,28 @@
             <code>next($this-&gt;results)</code>
             <code>reset($this-&gt;results)</code>
         </InvalidReturnStatement>
+        <InvalidReturnType occurrences="2">
+            <code>next</code>
+            <code>rewind</code>
+        </InvalidReturnType>
     </file>
     <file src="src/Datagrid/SimplePager.php">
         <InvalidReturnStatement occurrences="2">
             <code>$this-&gt;results</code>
             <code>$this-&gt;results</code>
         </InvalidReturnStatement>
+        <InvalidPropertyAssignmentValue occurrences="2">
+            <code>new ArrayCollection($this-&gt;results-&gt;slice(0, $this-&gt;getMaxPerPage()))</code>
+            <code>new ArrayCollection(\array_slice($this-&gt;results, 0, $this-&gt;getMaxPerPage()))</code>
+        </InvalidPropertyAssignmentValue>
+    </file>
+    <file src="src/DependencyInjection/Compiler/ExtensionCompilerPass.php">
+        <InvalidReturnStatement occurrences="1">
+            <code>$extensionMap</code>
+        </InvalidReturnStatement>
+        <InvalidReturnType occurrences="1">
+            <code>array&lt;string, array&lt;string, array&lt;string, array&lt;string, array&lt;string, string&gt;&gt;&gt;&gt;&gt;</code>
+        </InvalidReturnType>
     </file>
     <file src="src/Translator/Extractor/JMSTranslatorBundle/AdminExtractor.php">
         <InvalidReturnType occurrences="2">
@@ -58,114 +74,6 @@
         <UnrecognizedStatement occurrences="1"/>
     </file>
     <!--will be removed in v4. Currently BC break-->
-    <file src="src/Form/Extension/ChoiceTypeExtension.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Extension/Field/Type/FormTypeFieldExtension.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Extension/Field/Type/MopaCompatibilityTypeFieldExtension.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/AclMatrixType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/AdminType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/ChoiceFieldMaskType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/Filter/ChoiceType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/Filter/DateRangeType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/Filter/DateTimeRangeType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/Filter/DateTimeType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/Filter/DateType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/Filter/DefaultType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/Filter/NumberType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/ModelAutocompleteType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/ModelHiddenType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/ModelListType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/ModelReferenceType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <file src="src/Form/Type/ModelType.php">
-        <UndefinedClass occurrences="1">
-            <code>OptionsResolverInterface</code>
-        </UndefinedClass>
-    </file>
-    <!-- ignore template files-->
-    <file src="src/Resources/skeleton/Admin.tpl.php">
-        <UndefinedGlobalVariable occurrences="6">
-            <code>$namespace</code>
-            <code>$class_name</code>
-            <code>$fields</code>
-            <code>$fields</code>
-            <code>$fields</code>
-            <code>$fields</code>
-        </UndefinedGlobalVariable>
-    </file>
-    <file src="src/Resources/skeleton/AdminController.tpl.php">
-        <UndefinedGlobalVariable occurrences="2">
-            <code>$namespace</code>
-            <code>$class_name</code>
-        </UndefinedGlobalVariable>
-    </file>
-    <!--will be removed in v4. Currently BC break-->
     <file src="src/Twig/Extension/StringExtension.php">
         <UndefinedClass occurrences="2">
             <code>TextExtension</code>
@@ -173,7 +81,8 @@
         </UndefinedClass>
     </file>
     <file src="src/Admin/FieldDescriptionCollection.php">
-        <InvalidPropertyAssignmentValue occurrences="1">
+        <InvalidPropertyAssignmentValue occurrences="2">
+            <code>$this-&gt;elements</code>
             <code>array_merge(array_flip($keys), $this-&gt;elements)</code>
         </InvalidPropertyAssignmentValue>
     </file>
