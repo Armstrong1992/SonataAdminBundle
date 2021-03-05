@@ -31,6 +31,8 @@ use Sonata\Form\Validator\ErrorElement;
  * @method array configureActionButtons(AdminInterface $admin, array $list, string $action, object $object)
  * @method void  configureDefaultFilterValues(AdminInterface $admin, array &$filterValues)
  * @method void  configureDefaultSortValues(AdminInterface $admin, array &$sortValues)
+ * @method void  configureFormOptions(AdminInterface $admin, array &$formOptions)
+ * @method array configurePersistentParameters(AdminInterface $admin, array $parameters)
  *
  * @phpstan-template T of object
  */
@@ -73,7 +75,7 @@ interface AdminExtensionInterface
      * @return void
      *
      * @phpstan-param AdminInterface<T> $admin
-     * @phpstan-param AdminInterface<T>|null $childAdmin
+     * @phpstan-param AdminInterface<object>|null $childAdmin
      *
      * @deprecated
      */
@@ -92,7 +94,7 @@ interface AdminExtensionInterface
      * @return void
      *
      * @phpstan-param AdminInterface<T> $admin
-     * @phpstan-param AdminInterface<T>|null $childAdmin
+     * @phpstan-param AdminInterface<object>|null $childAdmin
      */
     public function configureTabMenu(
         AdminInterface $admin,
@@ -149,6 +151,10 @@ interface AdminExtensionInterface
     public function alterObject(AdminInterface $admin, $object);
 
     /**
+     * NEXT_MAJOR: Remove this method.
+     *
+     * @deprecated since sonata-project/admin-bundle 3.90, use configurePersistentParameters() instead.
+     *
      * Get a chance to add persistent parameters.
      *
      * @return array<string, mixed>
@@ -156,6 +162,17 @@ interface AdminExtensionInterface
      * @phpstan-param AdminInterface<T> $admin
      */
     public function getPersistentParameters(AdminInterface $admin);
+
+    /**
+     * Get a chance to add persistent parameters.
+     *
+     * @param array<string, mixed> $parameters
+     *
+     * @return array<string, mixed>
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     */
+//    public function configurePersistentParameters(AdminInterface $admin, array $parameters);
 
     /**
      * Return the controller access mapping.
@@ -271,6 +288,15 @@ interface AdminExtensionInterface
      * @phpstan-param AdminInterface<T> $admin
      */
     // public function configureDefaultSortValues(AdminInterface $admin, array &$sortValues): void;
+
+    /*
+     * NEXT_MAJOR: Uncomment this method and remove the corresponding @method annotation.
+     *
+     * Returns a list of form options
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     */
+    // public function configureFormOptions(AdminInterface $admin, array &$formOptions): void;
 }
 
 class_exists(\Sonata\Form\Validator\ErrorElement::class);

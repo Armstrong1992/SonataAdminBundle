@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Admin;
 
+use Sonata\AdminBundle\Exception\AdminClassNotFoundException;
+use Sonata\AdminBundle\Exception\AdminCodeNotFoundException;
+use Sonata\AdminBundle\Exception\TooManyAdminClassException;
 use Sonata\AdminBundle\SonataConfiguration;
 use Sonata\AdminBundle\Templating\MutableTemplateRegistryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -44,6 +47,8 @@ use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
  */
 class Pool
 {
+    public const DEFAULT_ADMIN_KEY = 'default';
+
     /**
      * @var ContainerInterface
      */
@@ -117,7 +122,9 @@ class Pool
     protected $propertyAccessor;
 
     /**
-     * NEXT_MAJOR: change to TemplateRegistryInterface.
+     * NEXT_MAJOR: Remove this property.
+     *
+     * @deprecated since sonata-project/admin-bundle 3.89 and will be removed in 4.0.
      *
      * @var MutableTemplateRegistryInterface
      */
@@ -155,7 +162,7 @@ class Pool
                 .' sonata-project/admin-bundle 3.86 and will throw "%s" exception in 4.0.',
                 __METHOD__,
                 \TypeError::class
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
 
             $this->title = $titleOrAdminServiceIds;
         }
@@ -169,7 +176,7 @@ class Pool
                 .' sonata-project/admin-bundle 3.86 and will throw "%s" exception in 4.0.',
                 __METHOD__,
                 \TypeError::class
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
 
             $this->titleLogo = $logoTitleOrAdminGroups;
         }
@@ -187,7 +194,7 @@ class Pool
                 'Passing an "%s" instance as argument 4 to "%s()" is deprecated since sonata-project/admin-bundle 3.82.',
                 PropertyAccessorInterface::class,
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         // NEXT_MAJOR: Remove next line.
@@ -218,7 +225,7 @@ class Pool
         @trigger_error(sprintf(
             'Method "%s()" is deprecated since sonata-project/admin-bundle 3.83 and will be removed in version 4.0.',
             __METHOD__
-        ), E_USER_DEPRECATED);
+        ), \E_USER_DEPRECATED);
 
         $groups = $this->adminGroups;
 
@@ -247,7 +254,7 @@ class Pool
         @trigger_error(sprintf(
             'Method "%s()" is deprecated since sonata-project/admin-bundle 3.83 and will be removed in version 4.0.',
             __METHOD__
-        ), E_USER_DEPRECATED);
+        ), \E_USER_DEPRECATED);
 
         return isset($this->adminGroups[$group]);
     }
@@ -267,28 +274,26 @@ class Pool
      */
     public function getDashboardGroups()
     {
-        $groups = $this->adminGroups;
+        $groups = [];
 
         foreach ($this->adminGroups as $name => $adminGroup) {
             if (isset($adminGroup['items'])) {
-                foreach ($adminGroup['items'] as $key => $item) {
-                    // Only Admin Group should be returned
-                    if (isset($item['admin']) && !empty($item['admin'])) {
-                        $admin = $this->getInstance($item['admin']);
-
-                        if ($admin->showIn(AbstractAdmin::CONTEXT_DASHBOARD)) {
-                            $groups[$name]['items'][$key] = $admin;
-                        } else {
-                            unset($groups[$name]['items'][$key]);
-                        }
-                    } else {
-                        unset($groups[$name]['items'][$key]);
+                $items = array_filter(array_map(function (array $item): ?AdminInterface {
+                    if (!isset($item['admin']) || empty($item['admin'])) {
+                        return null;
                     }
-                }
-            }
 
-            if (empty($groups[$name]['items'])) {
-                unset($groups[$name]);
+                    $admin = $this->getInstance($item['admin']);
+                    if (!$admin->showIn(AbstractAdmin::CONTEXT_DASHBOARD)) {
+                        return null;
+                    }
+
+                    return $admin;
+                }, $adminGroup['items']));
+
+                if ([] !== $items) {
+                    $groups[$name] = ['items' => $items] + $adminGroup;
+                }
             }
         }
 
@@ -313,7 +318,7 @@ class Pool
         @trigger_error(sprintf(
             'Method "%s()" is deprecated since sonata-project/admin-bundle 3.83 and will be removed in version 4.0.',
             __METHOD__
-        ), E_USER_DEPRECATED);
+        ), \E_USER_DEPRECATED);
 
         if (!isset($this->adminGroups[$group])) {
             throw new \InvalidArgumentException(sprintf('Group "%s" not found in admin pool.', $group));
@@ -339,11 +344,13 @@ class Pool
      *
      * @param string $class
      *
+     * @throws AdminClassNotFoundException if there is no admin class for the class provided
+     * @throws TooManyAdminClassException  if there is multiple admin class for the class provided
+     *
      * @return AdminInterface|null
      *
-     * @phpstan-template T of object
-     * @phpstan-param class-string<T> $class
-     * @phpstan-return AdminInterface<T>|null
+     * @phpstan-param class-string $class
+     * @phpstan-return AdminInterface|null
      */
     public function getAdminByClass($class)
     {
@@ -354,25 +361,31 @@ class Pool
                 __METHOD__,
                 $class,
                 __CLASS__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
 
             // NEXT_MAJOR : remove the previous `trigger_error()` call, the `return null` statement,
             // uncomment the following exception and declare AdminInterface as return type
             //
-            // throw new \LogicException(sprintf('Pool has no admin for the class %s.', $class));
+            // throw new AdminClassNotFoundException(sprintf('Pool has no admin for the class %s.', $class));
 
             return null;
         }
 
-        if (!$this->hasSingleAdminByClass($class)) {
+        if (isset($this->adminClasses[$class][self::DEFAULT_ADMIN_KEY])) {
+            return $this->getInstance($this->adminClasses[$class][self::DEFAULT_ADMIN_KEY]);
+        }
+
+        if (1 !== \count($this->adminClasses[$class])) {
+            // NEXT_MAJOR: Throw TooManyAdminClassException instead.
             throw new \RuntimeException(sprintf(
-                'Unable to find a valid admin for the class: %s, there are too many registered: %s',
+                'Unable to find a valid admin for the class: %s, there are too many registered: %s.'
+                .' Please define a default one with the tag attribute `default: true` in your admin configuration.',
                 $class,
                 implode(', ', $this->adminClasses[$class])
             ));
         }
 
-        return $this->getInstance($this->adminClasses[$class][0]);
+        return $this->getInstance(reset($this->adminClasses[$class]));
     }
 
     /**
@@ -384,14 +397,21 @@ class Pool
      */
     public function hasAdminByClass($class)
     {
-        return isset($this->adminClasses[$class]);
+        return isset($this->adminClasses[$class]) && \count($this->adminClasses[$class]) > 0;
     }
 
     /**
      * @phpstan-param class-string $class
+     *
+     * @deprecated since sonata-project/admin-bundle 3.89
      */
     public function hasSingleAdminByClass(string $class): bool
     {
+        @trigger_error(sprintf(
+            'Method "%s()" is deprecated since sonata-project/admin-bundle 3.89 and will be removed in version 4.0.',
+            __METHOD__
+        ), \E_USER_DEPRECATED);
+
         if (!$this->hasAdminByClass($class)) {
             return false;
         }
@@ -405,7 +425,7 @@ class Pool
      *
      * @param string $adminCode
      *
-     * @throws \InvalidArgumentException if the root admin code is an empty string
+     * @throws AdminCodeNotFoundException
      *
      * @return AdminInterface|false
      */
@@ -417,7 +437,7 @@ class Pool
                 .' sonata-project/admin-bundle 3.51 and will cause a %s in 4.0.',
                 __METHOD__,
                 \TypeError::class
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
 
             return false;
 
@@ -426,13 +446,6 @@ class Pool
 
         $codes = explode('|', $adminCode);
         $code = trim(array_shift($codes));
-
-        if ('' === $code) {
-            throw new \InvalidArgumentException(
-                'Root admin code must contain a valid admin reference, empty string given.'
-            );
-        }
-
         $admin = $this->getInstance($code);
 
         foreach ($codes as $code) {
@@ -441,9 +454,9 @@ class Pool
                     'Passing an invalid admin code as argument 1 for %s() is deprecated since'
                     .' sonata-project/admin-bundle 3.50 and will throw an exception in 4.0.',
                     __METHOD__
-                ), E_USER_DEPRECATED);
+                ), \E_USER_DEPRECATED);
 
-                // NEXT_MAJOR : throw `\InvalidArgumentException` instead
+                // NEXT_MAJOR : throw `AdminCodeNotFoundException` instead
             }
 
             if (!$admin->hasChild($code)) {
@@ -451,10 +464,10 @@ class Pool
                     'Passing an invalid admin hierarchy inside argument 1 for %s() is deprecated since'
                     .' sonata-project/admin-bundle 3.51 and will throw an exception in 4.0.',
                     __METHOD__
-                ), E_USER_DEPRECATED);
+                ), \E_USER_DEPRECATED);
 
                 // NEXT_MAJOR : remove the previous `trigger_error()` call, uncomment the following exception and declare AdminInterface as return type
-                // throw new \InvalidArgumentException(sprintf(
+                // throw new AdminCodeNotFoundException(sprintf(
                 //    'Argument 1 passed to %s() must contain a valid admin hierarchy,'
                 //    .' "%s" is not a valid child for "%s"',
                 //    __METHOD__,
@@ -489,21 +502,54 @@ class Pool
     }
 
     /**
+     * @throws AdminClassNotFoundException if there is no admin for the field description target model
+     * @throws TooManyAdminClassException  if there is too many admin for the field description target model
+     * @throws AdminCodeNotFoundException  if the admin_code option is invalid
+     *
+     * @return AdminInterface|false|null NEXT_MAJOR: Restrict to AdminInterface
+     */
+    final public function getAdminByFieldDescription(FieldDescriptionInterface $fieldDescription)
+    {
+        $adminCode = $fieldDescription->getOption('admin_code');
+
+        if (null !== $adminCode) {
+            return $this->getAdminByAdminCode($adminCode);
+        }
+
+        // NEXT_MAJOR: Remove the check and use `getTargetModel`.
+        if (method_exists($fieldDescription, 'getTargetModel')) {
+            /** @var class-string $targetModel */
+            $targetModel = $fieldDescription->getTargetModel();
+        } else {
+            $targetModel = $fieldDescription->getTargetEntity();
+        }
+
+        return $this->getAdminByClass($targetModel);
+    }
+
+    /**
      * Returns a new admin instance depends on the given code.
      *
      * @param string $id
      *
-     * @throws \InvalidArgumentException
+     * @throws AdminCodeNotFoundException if the code is not found in admin pool
      *
      * @return AdminInterface
      */
     public function getInstance($id)
     {
+        if ('' === $id) {
+            throw new \InvalidArgumentException(
+                'Admin code must contain a valid admin reference, empty string given.'
+            );
+        }
+
         if (!\in_array($id, $this->adminServiceIds, true)) {
             $msg = sprintf('Admin service "%s" not found in admin pool.', $id);
             $shortest = -1;
             $closest = null;
             $alternatives = [];
+
             foreach ($this->adminServiceIds as $adminServiceId) {
                 $lev = levenshtein($id, $adminServiceId);
                 if ($lev <= $shortest || $shortest < 0) {
@@ -514,6 +560,7 @@ class Pool
                     $alternatives[$adminServiceId] = $lev;
                 }
             }
+
             if (null !== $closest) {
                 asort($alternatives);
                 unset($alternatives[$closest]);
@@ -524,7 +571,8 @@ class Pool
                     implode(', ', array_keys($alternatives))
                 );
             }
-            throw new \InvalidArgumentException($msg);
+
+            throw new AdminCodeNotFoundException($msg);
         }
 
         $admin = $this->container->get($id);
@@ -549,7 +597,7 @@ class Pool
             @trigger_error(sprintf(
                 'Method "%s()" is deprecated since sonata-project/admin-bundle 3.77 and will be removed in version 4.0.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         return $this->container;
@@ -572,7 +620,7 @@ class Pool
             @trigger_error(sprintf(
                 'Method "%s()" is deprecated since sonata-project/admin-bundle 3.86 and will be removed in version 4.0.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         $this->adminGroups = $adminGroups;
@@ -600,7 +648,7 @@ class Pool
             @trigger_error(sprintf(
                 'Method "%s()" is deprecated since sonata-project/admin-bundle 3.86 and will be removed in version 4.0.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         $this->adminServiceIds = $adminServiceIds;
@@ -632,7 +680,7 @@ class Pool
             @trigger_error(sprintf(
                 'Method "%s()" is deprecated since sonata-project/admin-bundle 3.86 and will be removed in version 4.0.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         $this->adminClasses = $adminClasses;
@@ -649,10 +697,19 @@ class Pool
     }
 
     /**
-     * NEXT_MAJOR: change to TemplateRegistryInterface.
+     * NEXT_MAJOR: Remove this method.
+     *
+     * @deprecated since sonata-project/admin-bundle 3.89 and will be removed in 4.0.
      */
     final public function setTemplateRegistry(MutableTemplateRegistryInterface $templateRegistry): void
     {
+        if ('sonata_deprecation_mute' !== (\func_get_args()[1] ?? null)) {
+            @trigger_error(sprintf(
+                'The "%s()" method is deprecated since version 3.89 and will be removed in 4.0.',
+                __METHOD__,
+            ), \E_USER_DEPRECATED);
+        }
+
         $this->templateRegistry = $templateRegistry;
     }
 
@@ -705,7 +762,7 @@ class Pool
             .' Use "%s::getLogo()" instead.',
             __METHOD__,
             SonataConfiguration::class
-        ), E_USER_DEPRECATED);
+        ), \E_USER_DEPRECATED);
 
         return $this->titleLogo;
     }
@@ -724,7 +781,7 @@ class Pool
             .' Use "%s::getTitle()" instead.',
             __METHOD__,
             SonataConfiguration::class
-        ), E_USER_DEPRECATED);
+        ), \E_USER_DEPRECATED);
 
         return $this->title;
     }
@@ -746,7 +803,7 @@ class Pool
             .' Use "%s::getOption()" instead.',
             __METHOD__,
             SonataConfiguration::class
-        ), E_USER_DEPRECATED);
+        ), \E_USER_DEPRECATED);
 
         if (isset($this->options[$name])) {
             return $this->options[$name];
@@ -763,7 +820,7 @@ class Pool
         @trigger_error(sprintf(
             'The "%s" method is deprecated since version 3.82 and will be removed in 4.0.',
             __METHOD__
-        ), E_USER_DEPRECATED);
+        ), \E_USER_DEPRECATED);
 
         if (null === $this->propertyAccessor) {
             $this->propertyAccessor = PropertyAccess::createPropertyAccessor();

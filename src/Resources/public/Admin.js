@@ -226,6 +226,11 @@ var Admin = {
                     .replaceWith(html);
             },
             error: function(xhr, statusText, errorThrown) {
+                // On some error responses, we return JSON.
+                if ('application/json' === xhr.getResponseHeader('Content-Type')) {
+                    return JSON.parse(xhr.responseText);
+                }
+
                 return xhr.responseText;
             }
         });
@@ -329,22 +334,16 @@ var Admin = {
                 return;
             }
 
-            var defaultValues = $.param({'filter': JSON.parse(this.dataset.defaultValues)}).split('&'),
-                submittedValues = $form.serialize().split('&');
+            var defaults = Admin.convert_query_string_to_object(
+                $.param({'filter': JSON.parse(this.dataset.defaultValues)})
+            );
 
-            // Compare default and submitted filter values in `keyValue` representation. (`keyValue` ex: "filter[publish][value][end]=2020-12-12")
-            // Only allow to submit non default and non empty values, because empty values means they are not present.
-            var changedValues = submittedValues.filter(function (keyValue) {
-                return defaultValues.indexOf(keyValue) === -1 && keyValue.split('=')[1] !== '';
+            // Keep only changed values
+            $form.find('[name*=filter]').each(function (i, field) {
+                if (JSON.stringify(defaults[field.name] || '') === JSON.stringify($(field).val())) {
+                    field.removeAttribute('name');
+                }
             });
-
-            // Disable all inputs and enable only the required ones
-            $form.find('[name*=filter]').attr('disabled', 'disabled');
-            changedValues
-                .map(function (keyValue) { return decodeURIComponent(keyValue.split('=')[0]); })
-                .forEach(function (key) {
-                    $form.find('[name="' + key + '"]').removeAttr('disabled');
-                });
         });
 
         /* Advanced filters */
@@ -571,13 +570,13 @@ var Admin = {
         return '100%';
     },
 
-    setup_sortable_select2: function(subject, data) {
+    setup_sortable_select2: function(subject, data, customOptions) {
         var transformedData = [];
         for (var i = 0 ; i < data.length ; i++) {
             transformedData[i] = {id: data[i].data, text: data[i].label};
         }
 
-        subject.select2({
+        var options = Object.assign({
             width: function(){
                 // Select2 v3 and v4 BC. If window.Select2 is defined, then the v3 is installed.
                 // NEXT_MAJOR: Remove Select2 v3 support.
@@ -586,7 +585,9 @@ var Admin = {
             dropdownAutoWidth: true,
             data: transformedData,
             multiple: true
-        });
+        }, customOptions);
+
+        subject.select2(options);
 
         subject.select2("container").find("ul.select2-choices").sortable({
             containment: 'parent',
@@ -667,6 +668,7 @@ var Admin = {
             Admin.handleScroll(footer, navbar, wrapper);
         }
     },
+
     handleScroll: function(footer, navbar, wrapper) {
         if (footer.length && jQuery(window).scrollTop() + jQuery(window).height() != jQuery(document).height()) {
             jQuery(footer).addClass('stuck');
@@ -696,6 +698,7 @@ var Admin = {
             }, 250)
         );
     },
+
     handleResize: function(footer, navbar, wrapper) {
         if (navbar.length && jQuery(navbar).hasClass('stuck')) {
             jQuery(navbar).width(jQuery(wrapper).outerWidth());
@@ -705,6 +708,7 @@ var Admin = {
             jQuery(footer).width(jQuery(wrapper).outerWidth());
         }
     },
+
     refreshNavbarStuckClass: function(topNavbar) {
         var stuck = jQuery('#navbar-stuck');
 
@@ -717,6 +721,7 @@ var Admin = {
 
         stuck.html('body.fixed .content-header .navbar.stuck { top: ' + jQuery(topNavbar).outerHeight() + 'px; }');
     },
+
     // http://davidwalsh.name/javascript-debounce-function
     debounce: function (func, wait, immediate) {
         var timeout;
@@ -743,6 +748,7 @@ var Admin = {
             }
         };
     },
+
     setup_readmore_elements: function(subject) {
         Admin.log('[core|setup_readmore_elements] setup readmore elements on', subject);
 
@@ -754,9 +760,11 @@ var Admin = {
             });
         });
     },
+
     handle_top_navbar_height: function() {
         jQuery('body.fixed .content-wrapper').css('padding-top', jQuery('.navbar-static-top').outerHeight());
     },
+
     setup_form_submit: function(subject) {
         Admin.log('[core|setup_form_submit] setup form submit on', subject);
 
@@ -775,6 +783,25 @@ var Admin = {
             }
         });
     },
+
+    convert_query_string_to_object: function (str) {
+        return str.split('&').reduce(function (accumulator, keyValue) {
+            var key = decodeURIComponent(keyValue.split('=')[0]);
+            var val = keyValue.split('=')[1];
+
+            if (key.endsWith('[]')) {
+                if (!accumulator.hasOwnProperty(key)) {
+                    accumulator[key] = [];
+                }
+                accumulator[key].push(val);
+            } else {
+                accumulator[key] = val;
+            }
+
+            return accumulator;
+        }, {});
+    },
+
     /**
      * Remember open tab after refreshing page.
      */

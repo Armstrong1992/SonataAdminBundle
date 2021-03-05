@@ -11,10 +11,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Sonata\AdminBundle\Tests\Fixtures\Controller;
+namespace Sonata\AdminBundle\Exception;
 
-use Sonata\AdminBundle\Controller\CRUDController;
-
-final class ModelAdminController extends CRUDController
+/**
+ * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ */
+final class AdminClassNotFoundException extends \InvalidArgumentException
 {
 }

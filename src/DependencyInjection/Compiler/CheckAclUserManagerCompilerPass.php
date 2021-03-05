@@ -32,6 +32,7 @@ final class CheckAclUserManagerCompilerPass implements CompilerPassInterface
         }
 
         $userManagerServiceName = $container->getParameter('sonata.admin.security.acl_user_manager');
+        \assert(null === $userManagerServiceName || \is_string($userManagerServiceName));
 
         if (null === $userManagerServiceName
             || !$container->hasDefinition($userManagerServiceName)
@@ -47,7 +48,7 @@ final class CheckAclUserManagerCompilerPass implements CompilerPassInterface
                 .' is deprecated since sonata-project/admin-bundle 3.78 and will throw an "%s" exception in 4.0.',
                 AdminAclUserManagerInterface::class,
                 \InvalidArgumentException::class
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
     }
 }

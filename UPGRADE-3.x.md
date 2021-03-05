@@ -1,6 +1,87 @@
 UPGRADE 3.x
 ===========
 
+UPGRADE FROM 3.89 to 3.90
+=========================
+
+### Deprecated `Sonata\AdminBundle\Model\ModelManagerInterface::getModelInstance()` method.
+
+Use `Sonata\AdminBundle\Admin\AbstractAdmin::createNewInstance()` method instead.
+
+UPGRADE FROM 3.88 to 3.89
+=========================
+
+### Deprecated overriding `AbstractAdmin::getNewInstance()`.
+
+Use `AbstractAdmin::alterNewInstance()` instead.
+
+### Deprecated passing the field type and options to `DatagridMapper::add` as parameters 4 and 5.
+
+Before:
+```php
+use Sonata\AdminBundle\Admin\AbstractAdmin;
+
+final class MyAdmin extends AbstractAdmin
+{
+    protected function configureDatagridFilters(DatagridMapper $datagridMapper)
+    {
+        $datagridMapper->add('foo', null, [], MyFormType::class, ['foo' => 'bar']);
+    }
+}
+```
+After
+```php
+use Sonata\AdminBundle\Admin\AbstractAdmin;
+
+final class MyAdmin extends AbstractAdmin
+{
+    protected function configureDatagridFilters(DatagridMapper $datagridMapper)
+    {
+        $datagridMapper->add('foo', null, [
+            'field_type' => MyFormType::class,
+            'field_options' => ['foo' => 'bar'],
+        ]);
+    }
+}
+```
+
+### Deprecated the `Sonata\AdminBundle\AdminFieldDescription` `'code'` option.
+
+Use the `accessor` option instead.
+
+### Deprecated `Sonata\AdminBundle\Admin\AbstractAdmin::formOptions` property.
+
+This property has been replaced by the new method `Sonata\AdminBundle\Admin\AbstractAdmin::configureFormOptions()`
+
+Before:
+```php
+use Sonata\AdminBundle\Admin\AbstractAdmin;
+
+final class MyAdmin extends AbstractAdmin
+{
+    protected $formOptions = [
+        'validation_groups' => ['Default', 'MyAdmin'],
+    ];
+}
+```
+
+After:
+```php
+use Sonata\AdminBundle\Admin\AbstractAdmin;
+
+final class MyAdmin extends AbstractAdmin
+{
+    protected function configureFormOptions(array &$formOptions): void
+    {
+        $formOptions['validation_groups'] = ['Default', 'MyAdmin'];
+    }
+}
+```
+
+### Deprecated `Sonata\AdminBundle\Admin\Pool::setTemplateRegistry()` method.
+
+This method has been deprecated without replacement.
+
 UPGRADE FROM 3.86 to 3.87
 =========================
 

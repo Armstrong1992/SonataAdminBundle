@@ -16,6 +16,9 @@ namespace Sonata\AdminBundle\Admin;
 use Doctrine\Inflector\Inflector;
 use Doctrine\Inflector\InflectorFactory;
 use Sonata\AdminBundle\Exception\NoValueException;
+use Symfony\Component\PropertyAccess\Exception\ExceptionInterface;
+use Symfony\Component\PropertyAccess\PropertyAccess;
+use Symfony\Component\PropertyAccess\PropertyPathInterface;
 
 /**
  * A FieldDescription hold the information about a field. A typical
@@ -34,7 +37,7 @@ use Sonata\AdminBundle\Exception\NoValueException;
  *   - name (o) : the name used (label in the form, title in the list)
  *   - link_parameters (o) : add link parameter to the related Admin class when
  *                           the Admin.generateUrl is called
- *   - code : the method name to retrieve the related value
+ *   - accessor : the method or the property path to retrieve the related value
  *   - associated_tostring : (deprecated, use associated_property option)
  *                           the method to retrieve the "string" representation
  *                           of the collection element.
@@ -153,7 +156,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                 'Omitting the argument 1 for "%s()" or passing other type than "string" is deprecated'.
                 ' since sonata-project/admin-bundle 3.78. It will accept only string in version 4.0.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         } else {
             $this->setName($name);
 
@@ -197,7 +200,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                 'The %s() method is deprecated since sonata-project/admin-bundle 3.84'
                 .' and will become private in version 4.0.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         $this->fieldName = $fieldName;
@@ -255,7 +258,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                 .' and the option will be removed in 4.0.'
                 .' Use Symfony Form "help" option instead.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
 
             $this->setHelp($options['help'], 'sonata_deprecation_mute');
             unset($options['help']);
@@ -290,7 +293,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                 'Returning other type than string or null in method %s() is deprecated since'
                 .' sonata-project/admin-bundle 3.65. It will return only those types in version 4.0.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         return $this->template;
@@ -321,7 +324,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                     __METHOD__,
                     __CLASS__
                 ),
-                E_USER_DEPRECATED
+                \E_USER_DEPRECATED
             );
             // NEXT_MAJOR : remove the previous `trigger_error()` call, uncomment the following exception and declare AdminInterface as return type
             // throw new \LogicException(sprintf('%s has no parent.', static::class));
@@ -367,7 +370,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                     __METHOD__,
                     __CLASS__
                 ),
-                E_USER_DEPRECATED
+                \E_USER_DEPRECATED
             );
             // NEXT_MAJOR : remove the previous `trigger_error()` call, uncomment the following exception and declare AdminInterface as return type
             // throw new \LogicException(sprintf('%s has no association admin.', static::class));
@@ -416,17 +419,66 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
             return $this->getFieldValue($child, substr($fieldName, $dotPos + 1));
         }
 
-        $getters = [];
-        $parameters = [];
-
-        // prefer method name given in the code option
+        // NEXT_MAJOR: Remove this code.
         if ($this->getOption('code')) {
-            $getters[] = $this->getOption('code');
+            @trigger_error(
+                'The "code" option is deprecated since sonata-project/admin-bundle 3.89.'
+                .' Use the "accessor" code instead',
+                \E_USER_DEPRECATED
+            );
+
+            $getter = $this->getOption('code');
+            if (null !== $this->getOption('parameters')) {
+                @trigger_error(
+                    'The option "parameters" is deprecated since sonata-project/admin-bundle 3.89 and will be removed in 4.0.',
+                    \E_USER_DEPRECATED
+                );
+            }
+
+            $parameters = $this->getOption('parameters', []);
+            if (method_exists($object, $getter) && \is_callable([$object, $getter])) {
+                $this->cacheFieldGetter($object, $fieldName, 'getter', $getter);
+
+                return $object->{$getter}(...$parameters);
+            }
         }
-        // parameters for the method given in the code option
-        if ($this->getOption('parameters')) {
-            $parameters = $this->getOption('parameters');
+
+        // prefer the method or the property path given in the code option
+        $accessor = $this->getOption('accessor', $fieldName);
+        if (!\is_string($accessor) && \is_callable($accessor)) {
+            return $accessor($object);
+        } elseif (!\is_string($accessor) && !$accessor instanceof PropertyPathInterface) {
+            throw new \TypeError(sprintf(
+                'The option "accessor" must be a string, a callable or a %s, %s given.',
+                PropertyPathInterface::class,
+                \is_object($accessor) ? 'instance of '.\get_class($accessor) : \gettype($accessor)
+            ));
         }
+
+        // NEXT_MAJOR: Remove the condition code and the else part
+        if (null === $this->getOption('parameters')) {
+            $propertyAccesor = PropertyAccess::createPropertyAccessorBuilder()
+                ->enableMagicCall()
+                ->getPropertyAccessor();
+
+            try {
+                return $propertyAccesor->getValue($object, $accessor);
+            } catch (ExceptionInterface $exception) {
+                throw new NoValueException(
+                    sprintf('Cannot access property "%s" in class "%s".', $this->getName(), \get_class($object)),
+                    $exception->getCode(),
+                    $exception
+                );
+            }
+        }
+
+        @trigger_error(
+            'The option "parameters" is deprecated since sonata-project/admin-bundle 3.89 and will be removed in 4.0.',
+            \E_USER_DEPRECATED
+        );
+
+        $getters = [];
+        $parameters = $this->getOption('parameters');
 
         if (\is_string($fieldName) && '' !== $fieldName) {
             if ($this->hasCachedFieldGetter($object, $fieldName)) {
@@ -435,6 +487,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
 
             $camelizedFieldName = InflectorFactory::create()->build()->classify($fieldName);
 
+            $getters[] = lcfirst($camelizedFieldName);
             $getters[] = sprintf('get%s', $camelizedFieldName);
             $getters[] = sprintf('is%s', $camelizedFieldName);
             $getters[] = sprintf('has%s', $camelizedFieldName);
@@ -483,7 +536,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                     __METHOD__,
                     __CLASS__
                 ),
-                E_USER_DEPRECATED
+                \E_USER_DEPRECATED
             );
             // NEXT_MAJOR : remove the previous `trigger_error()` call, uncomment the following exception and declare AdminInterface as return type
             // throw new \LogicException(sprintf('%s has no admin.', static::class));
@@ -525,7 +578,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
         @trigger_error(sprintf(
             'The "%s()" method is deprecated since version 3.83 and will be removed in 4.0.',
             __METHOD__
-        ), E_USER_DEPRECATED);
+        ), \E_USER_DEPRECATED);
 
         $this->mappingType = $mappingType;
     }
@@ -554,7 +607,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
             'The %s method is deprecated since 3.1 and will be removed in 4.0. Use %s::classify() instead.',
             __METHOD__,
             Inflector::class
-        ), E_USER_DEPRECATED);
+        ), \E_USER_DEPRECATED);
 
         return InflectorFactory::create()->build()->classify($property);
     }
@@ -575,7 +628,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                 'The "%s()" method is deprecated since sonata-project/admin-bundle 3.74 and will be removed in version 4.0.'
                 .' Use Symfony Form "help" option instead.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         $this->help = $help;
@@ -595,7 +648,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                 'The "%s()" method is deprecated since sonata-project/admin-bundle 3.74 and will be removed in version 4.0.'
                 .' Use Symfony Form "help" option instead.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         return $this->help;
@@ -609,7 +662,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
                 'Returning other type than string, false or null in method %s() is deprecated since'
                 .' sonata-project/admin-bundle 3.65. It will return only those types in version 4.0.',
                 __METHOD__
-            ), E_USER_DEPRECATED);
+            ), \E_USER_DEPRECATED);
         }
 
         return $label;

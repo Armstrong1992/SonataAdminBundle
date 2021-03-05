@@ -18,7 +18,6 @@ use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Admin\BaseFieldDescription;
 use Sonata\AdminBundle\Exception\NoValueException;
 use Sonata\AdminBundle\Tests\Fixtures\Admin\FieldDescription;
-use Sonata\AdminBundle\Tests\Fixtures\Entity\Foo;
 use Sonata\AdminBundle\Tests\Fixtures\Entity\FooCall;
 use Symfony\Bridge\PhpUnit\ExpectDeprecationTrait;
 
@@ -187,6 +186,39 @@ class BaseFieldDescriptionTest extends TestCase
         $this->assertNull($description->getFieldValue(null, 'fake'));
     }
 
+    public function testGetFieldValueWithAccessor(): void
+    {
+        $description = new FieldDescription('name', ['accessor' => 'foo']);
+        $mock = $this->getMockBuilder(\stdClass::class)->addMethods(['getFoo'])->getMock();
+        $mock->expects($this->once())->method('getFoo')->willReturn(42);
+        $this->assertSame(42, $description->getFieldValue($mock, 'fake'));
+    }
+
+    public function testGetFieldValueWithTopLevelFunctionName(): void
+    {
+        $description = new FieldDescription('microtime');
+        $mock = $this->getMockBuilder(\stdClass::class)->addMethods(['getMicrotime'])->getMock();
+        $mock->expects($this->once())->method('getMicrotime')->willReturn(42);
+        $this->assertSame(42, $description->getFieldValue($mock, 'microtime'));
+    }
+
+    public function testGetFieldValueWithCallableAccessor(): void
+    {
+        $description = new FieldDescription('name', [
+            'accessor' => static function (object $object): int {
+                return $object->getFoo();
+            },
+        ]);
+        $mock = $this->getMockBuilder(\stdClass::class)->addMethods(['getFoo'])->getMock();
+        $mock->expects($this->once())->method('getFoo')->willReturn(42);
+        $this->assertSame(42, $description->getFieldValue($mock, 'fake'));
+    }
+
+    /**
+     * NEXT_MAJOR: Remove this test.
+     *
+     * @group legacy
+     */
     public function testGetFieldValueWithCode(): void
     {
         $description = new FieldDescription('name', ['code' => 'getFoo']);
@@ -195,6 +227,24 @@ class BaseFieldDescriptionTest extends TestCase
         $this->assertSame(42, $description->getFieldValue($mock, 'fake'));
     }
 
+    /**
+     * NEXT_MAJOR: Remove this test.
+     *
+     * @group legacy
+     */
+    public function testGetFieldValueWithWrongCode(): void
+    {
+        $description = new FieldDescription('name', ['code' => 'getFoo']);
+        $mock = $this->getMockBuilder(\stdClass::class)->addMethods(['getFake'])->getMock();
+        $mock->expects($this->once())->method('getFake')->willReturn(42);
+        $this->assertSame(42, $description->getFieldValue($mock, 'fake'));
+    }
+
+    /**
+     * NEXT_MAJOR: Remove this test.
+     *
+     * @group legacy
+     */
     public function testGetFieldValueWithParametersForGetter(): void
     {
         $arg1 = 38;
@@ -206,6 +256,7 @@ class BaseFieldDescriptionTest extends TestCase
         $mock1 = $this->getMockBuilder(\stdClass::class)->addMethods(['getWithOneParameter'])->getMock();
         $mock1->expects($this->once())->method('getWithOneParameter')->with($arg1)->willReturn($arg1 + 2);
 
+        $this->expectDeprecation('The option "parameters" is deprecated since sonata-project/admin-bundle 3.89 and will be removed in 4.0.');
         $this->assertSame(40, $description1->getFieldValue($mock1, 'fake'));
 
         $arg2 = 4;
@@ -221,15 +272,13 @@ class BaseFieldDescriptionTest extends TestCase
 
     public function testGetFieldValueWithMagicCall(): void
     {
-        $parameters = ['foo', 'bar'];
         $foo = new FooCall();
 
         $description = new FieldDescription('name');
-        $description->setOption('parameters', $parameters);
-        $this->assertSame(['fake', $parameters], $description->getFieldValue($foo, 'fake'));
+        $this->assertSame(['getFake', []], $description->getFieldValue($foo, 'fake'));
 
         // repeating to cover retrieving cached getter
-        $this->assertSame(['fake', $parameters], $description->getFieldValue($foo, 'fake'));
+        $this->assertSame(['getFake', []], $description->getFieldValue($foo, 'fake'));
     }
 
     /**
