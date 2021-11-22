@@ -2599,7 +2599,7 @@ EOT;
         return $this->extensions;
     }
 
-    public function toString($object)
+    public function toString(object $object): string
     {
         // NEXT_MAJOR: Remove this check and use object as param typehint.
         if (!\is_object($object)) {
