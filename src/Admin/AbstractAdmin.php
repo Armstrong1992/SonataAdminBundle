@@ -661,27 +661,27 @@ abstract class AbstractAdmin extends AbstractTaggedAdmin implements AdminInterfa
     {
     }
 
-    public function preUpdate($object)
+    protected function preUpdate(object $object): void
     {
     }
 
-    public function postUpdate($object)
+    protected function postUpdate(object $object): void
     {
     }
 
-    public function prePersist($object)
+    protected function prePersist(object $object): void
     {
     }
 
-    public function postPersist($object)
+    protected function postPersist(object $object): void
     {
     }
 
-    public function preRemove($object)
+    protected function preRemove(object $object): void
     {
     }
 
-    public function postRemove($object)
+    protected function postRemove(object $object): void
     {
     }
 
@@ -1295,7 +1295,7 @@ abstract class AbstractAdmin extends AbstractTaggedAdmin implements AdminInterfa
     /**
      * @final since sonata-project/admin-bundle 3.89
      */
-    public function getNewInstance()
+    final public function getNewInstance()
     {
         $object = $this->createNewInstance();
 
@@ -2599,7 +2599,7 @@ EOT;
         return $this->extensions;
     }
 
-    public function toString($object)
+    public function toString(object $object): string
     {
         // NEXT_MAJOR: Remove this check and use object as param typehint.
         if (!\is_object($object)) {
@@ -3223,7 +3223,7 @@ EOT;
      *
      * @return array<string, mixed>
      */
-    protected function configureBatchActions($actions)
+    protected function configureBatchActions(array $actions): array
     {
         return $actions;
     }
