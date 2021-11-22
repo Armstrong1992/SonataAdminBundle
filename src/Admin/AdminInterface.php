@@ -275,7 +275,7 @@ interface AdminInterface extends TaggedAdminInterface, AccessRegistryInterface, 
      *
      * @phpstan-param T $object
      */
-    public function toString($object);
+    public function toString(object $object): string;
 
     /**
      * Returning true will enable preview mode for
