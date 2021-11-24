@@ -1421,7 +1421,7 @@ abstract class AbstractAdmin extends AbstractTaggedAdmin implements AdminInterfa
     /**
      * @final since sonata-project/admin-bundle 3.63.0
      */
-    public function createQuery($context = 'list')
+    final public function createQuery($context = 'list')
     {
         if (\func_num_args() > 0) {
             @trigger_error(sprintf(
@@ -3268,7 +3268,7 @@ EOT;
      *
      * @phpstan-param AdminInterface<object>|null $childAdmin
      */
-    protected function configureTabMenu(ItemInterface $menu, $action, ?AdminInterface $childAdmin = null)
+    protected function configureTabMenu(ItemInterface $menu, string $action, ?AdminInterface $childAdmin = null): void
     {
         // Use configureSideMenu not to mess with previous overrides
         // NEXT_MAJOR: remove this line
