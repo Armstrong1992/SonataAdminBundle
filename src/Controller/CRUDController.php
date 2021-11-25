@@ -1534,7 +1534,7 @@ class CRUDController implements ContainerAwareInterface
      *
      * @phpstan-param T $object
      */
-    protected function preCreate(Request $request, $object)
+    protected function preCreate(Request $request, object $object): ?Response
     {
         return null;
     }
@@ -1549,7 +1549,7 @@ class CRUDController implements ContainerAwareInterface
      *
      * @phpstan-param T $object
      */
-    protected function preEdit(Request $request, $object)
+    protected function preEdit(Request $request, object $object): ?Response
     {
         return null;
     }
@@ -1564,7 +1564,7 @@ class CRUDController implements ContainerAwareInterface
      *
      * @phpstan-param T $object
      */
-    protected function preDelete(Request $request, $object)
+    protected function preDelete(Request $request, object $object): ?Response
     {
         return null;
     }
@@ -1590,7 +1590,7 @@ class CRUDController implements ContainerAwareInterface
      *
      * @return Response|null
      */
-    protected function preList(Request $request)
+    protected function preList(Request $request): ?Response
     {
         return null;
     }
