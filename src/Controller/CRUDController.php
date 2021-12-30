@@ -131,7 +131,7 @@ class CRUDController implements ContainerAwareInterface
      *
      * @return Response
      */
-    public function listAction()
+    public function listAction(): Response
     {
         $request = $this->getRequest();
 
@@ -176,7 +176,7 @@ class CRUDController implements ContainerAwareInterface
      *
      * @return RedirectResponse
      */
-    public function batchActionDelete(ProxyQueryInterface $query)
+    public function batchActionDelete(ProxyQueryInterface $query): Response
     {
         $this->admin->checkAccess('batchDelete');
 
@@ -209,9 +209,8 @@ class CRUDController implements ContainerAwareInterface
      *
      * @return Response|RedirectResponse
      */
-    public function deleteAction($id) // NEXT_MAJOR: Remove the unused $id parameter
+    public function deleteAction(Request $request): Response // NEXT_MAJOR: Remove the unused $id parameter
     {
-        $request = $this->getRequest();
         $id = $request->get($this->admin->getIdParameter());
         $object = $this->admin->getObject($id);
 
@@ -288,21 +287,13 @@ class CRUDController implements ContainerAwareInterface
      *
      * @return Response|RedirectResponse
      */
-    public function editAction($deprecatedId = null) // NEXT_MAJOR: Remove the unused $id parameter
+    public function editAction(Request $request): Response // NEXT_MAJOR: Remove the unused $id parameter
     {
-        if (isset(\func_get_args()[0])) {
-            @trigger_error(sprintf(
-                'Support for the "id" route param as argument 1 at `%s()` is deprecated since'
-                .' sonata-project/admin-bundle 3.62 and will be removed in 4.0,'
-                .' use `AdminInterface::getIdParameter()` instead.',
-                __METHOD__
-            ), \E_USER_DEPRECATED);
-        }
+
 
         // the key used to lookup the template
         $templateKey = 'edit';
 
-        $request = $this->getRequest();
         $id = $request->get($this->admin->getIdParameter());
         $existingObject = $this->admin->getObject($id);
 
@@ -410,17 +401,16 @@ class CRUDController implements ContainerAwareInterface
      *
      * @return Response|RedirectResponse
      */
-    public function batchAction()
+    public function batchAction(Request $request): Response
     {
-        $request = $this->getRequest();
         $restMethod = $request->getMethod();
 
         if (Request::METHOD_POST !== $restMethod) {
             throw $this->createNotFoundException(sprintf(
-                'Invalid request method given "%s", %s expected',
-                $restMethod,
-                Request::METHOD_POST
-            ));
+                                                     'Invalid request method given "%s", %s expected',
+                                                     $restMethod,
+                                                     Request::METHOD_POST
+                                                 ));
         }
 
         // check the csrf token
@@ -559,9 +549,8 @@ class CRUDController implements ContainerAwareInterface
      *
      * @return Response
      */
-    public function createAction()
+    public function createAction(Request $request): Response
     {
-        $request = $this->getRequest();
 
         $this->assertObjectExists($request);
 
@@ -583,7 +572,6 @@ class CRUDController implements ContainerAwareInterface
                 null
             );
         }
-
         $newObject = $this->admin->getNewInstance();
 
         $preResponse = $this->preCreate($request, $newObject);
@@ -680,18 +668,9 @@ class CRUDController implements ContainerAwareInterface
      *
      * @return Response
      */
-    public function showAction($deprecatedId = null) // NEXT_MAJOR: Remove the unused $id parameter
+    public function showAction(Request $request): Response // NEXT_MAJOR: Remove the unused $id parameter
     {
-        if (isset(\func_get_args()[0])) {
-            @trigger_error(sprintf(
-                'Support for the "id" route param as argument 1 at `%s()` is deprecated since'
-                .' sonata-project/admin-bundle 3.62 and will be removed in 4.0,'
-                .' use `AdminInterface::getIdParameter()` instead.',
-                __METHOD__
-            ), \E_USER_DEPRECATED);
-        }
 
-        $request = $this->getRequest();
         $id = $request->get($this->admin->getIdParameter());
         $object = $this->admin->getObject($id);
 
@@ -1294,10 +1273,8 @@ class CRUDController implements ContainerAwareInterface
      *
      * @phpstan-param T $object
      */
-    protected function redirectTo($object)
+    protected function redirectTo(Request $request, object $object): RedirectResponse
     {
-        $request = $this->getRequest();
-
         $url = false;
 
         if (null !== $request->get('btn_update_and_list')) {
