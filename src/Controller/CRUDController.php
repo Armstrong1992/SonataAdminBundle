@@ -263,7 +263,7 @@ class CRUDController implements ContainerAwareInterface
                 );
             }
 
-            return $this->redirectTo($object);
+            return $this->redirectTo($request, $object);
         }
 
         // NEXT_MAJOR: Remove this line and use commented line below it instead
@@ -342,7 +342,7 @@ class CRUDController implements ContainerAwareInterface
                     );
 
                     // redirect to edit mode
-                    return $this->redirectTo($existingObject);
+                    return $this->redirectTo($request, $existingObject);
                 } catch (ModelManagerException $e) {
                     $this->handleModelManagerException($e);
 
@@ -613,7 +613,7 @@ class CRUDController implements ContainerAwareInterface
                     );
 
                     // redirect to edit mode
-                    return $this->redirectTo($newObject);
+                    return $this->redirectTo($request, $newObject);
                 } catch (ModelManagerException $e) {
                     $this->handleModelManagerException($e);
 
