@@ -657,7 +657,7 @@ abstract class AbstractAdmin extends AbstractTaggedAdmin implements AdminInterfa
      *
      * @phpstan-param T $object
      */
-    public function preValidate($object)
+    public function preValidate(object $object): void
     {
     }
 
@@ -3204,7 +3204,7 @@ EOT;
     {
     }
 
-    protected function configureDatagridFilters(DatagridMapper $filter)
+    protected function configureDatagridFilters(DatagridMapper $filter): void
     {
     }
 
