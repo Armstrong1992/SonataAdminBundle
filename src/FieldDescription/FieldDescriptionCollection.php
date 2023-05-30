@@ -88,11 +88,14 @@ class FieldDescriptionCollection implements \ArrayAccess, \Countable
         }
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetExists($offset)
     {
         return $this->has($offset);
     }
 
+
+    #[\ReturnTypeWillChange]
     /**
      * @param string $offset
      *
@@ -105,16 +108,19 @@ class FieldDescriptionCollection implements \ArrayAccess, \Countable
         return $this->get($offset);
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
     {
         throw new \RuntimeException('Cannot set value, use add');
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetUnset($offset)
     {
         $this->remove($offset);
     }
 
+    #[\ReturnTypeWillChange]
     public function count()
     {
         return \count($this->elements);
