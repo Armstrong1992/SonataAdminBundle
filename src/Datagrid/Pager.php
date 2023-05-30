@@ -672,7 +672,7 @@ abstract class Pager implements \Iterator, \Countable, \Serializable, PagerInter
      *
      * @deprecated since sonata-project/admin-bundle 3.84
      */
-    public function current()
+    public function current(): mixed
     {
         @trigger_error(sprintf(
             'The method "%s()" is deprecated since sonata-project/admin-bundle 3.84 and will be removed in 4.0.',
@@ -691,6 +691,7 @@ abstract class Pager implements \Iterator, \Countable, \Serializable, PagerInter
      *
      * @deprecated since sonata-project/admin-bundle 3.84
      */
+    #[\ReturnTypeWillChange]
     public function key()
     {
         @trigger_error(sprintf(
@@ -705,6 +706,8 @@ abstract class Pager implements \Iterator, \Countable, \Serializable, PagerInter
         return key($this->results);
     }
 
+
+    #[\ReturnTypeWillChange]
     /**
      * NEXT_MAJOR: Remove this method.
      *
@@ -727,6 +730,8 @@ abstract class Pager implements \Iterator, \Countable, \Serializable, PagerInter
         return next($this->results);
     }
 
+
+    #[\ReturnTypeWillChange]
     /**
      * NEXT_MAJOR: Remove this method.
      *
@@ -749,6 +754,7 @@ abstract class Pager implements \Iterator, \Countable, \Serializable, PagerInter
         return reset($this->results);
     }
 
+    #[\ReturnTypeWillChange]
     /**
      * NEXT_MAJOR: Remove this method.
      *
@@ -773,7 +779,7 @@ abstract class Pager implements \Iterator, \Countable, \Serializable, PagerInter
      *
      * @deprecated since sonata-project/admin-bundle 3.84, use countResults instead
      */
-    public function count()
+    public function count(): int
     {
         @trigger_error(sprintf(
             'The method "%s()" is deprecated since sonata-project/admin-bundle 3.84 and will be removed in 4.0.',
