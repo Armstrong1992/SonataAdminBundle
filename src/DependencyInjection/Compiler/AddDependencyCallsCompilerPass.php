@@ -77,11 +77,12 @@ class AddDependencyCallsCompilerPass implements CompilerPassInterface
                 if ($definition instanceof ChildDefinition) {
                     $parentDefinition = $container->getDefinition($definition->getParent());
                 }
-
-                $this->replaceDefaultArguments([
-                    0 => $id,
-                    2 => $defaultController,
-                ], $definition, $parentDefinition);
+                if(!isset($attributes['model_class'])){
+                    $this->replaceDefaultArguments([
+                        0 => $id,
+                        2 => $defaultController,
+                    ], $definition, $parentDefinition);
+                }
                 $this->applyConfigurationFromAttribute($definition, $attributes);
                 $this->applyDefaults($container, $id, $attributes);
 
@@ -91,24 +92,30 @@ class AddDependencyCallsCompilerPass implements CompilerPassInterface
 
                 $admins[] = $id;
 
-                if (!isset($classes[$arguments[1]])) {
-                    $classes[$arguments[1]] = [];
+                if(!isset($attributes['model_class'])){
+                    $modelclass = $arguments[1];
+                }else{
+                    $modelclass = $attributes['model_class'];
+                }
+
+                if (!isset($classes[$modelclass])) {
+                    $classes[$modelclass] = [];
                 }
 
                 $default = (bool) (isset($attributes['default']) ? $parameterBag->resolveValue($attributes['default']) : false);
                 if ($default) {
-                    if (isset($classes[$arguments[1]][Pool::DEFAULT_ADMIN_KEY])) {
+                    if (isset($classes[$modelclass][Pool::DEFAULT_ADMIN_KEY])) {
                         throw new \RuntimeException(sprintf(
                             'The class %s has two default admins %s and %s.',
                             $arguments[1],
-                            $classes[$arguments[1]][Pool::DEFAULT_ADMIN_KEY],
+                            $classes[$modelclass][Pool::DEFAULT_ADMIN_KEY],
                             $id
                         ));
                     }
 
-                    $classes[$arguments[1]][Pool::DEFAULT_ADMIN_KEY] = $id;
+                    $classes[$modelclass][Pool::DEFAULT_ADMIN_KEY] = $id;
                 } else {
-                    $classes[$arguments[1]][] = $id;
+                    $classes[$modelclass][] = $id;
                 }
 
                 $showInDashboard = (bool) (isset($attributes['show_in_dashboard']) ? $parameterBag->resolveValue($attributes['show_in_dashboard']) : true);
