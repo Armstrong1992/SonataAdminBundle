@@ -100,7 +100,9 @@ abstract class BaseGroupedMapper extends BaseMapper implements MapperInterface
         // Open
         if (\array_key_exists('tab', $options) && $options['tab']) {
             $tabs = $this->getTabs();
-
+            if($tabs === false){
+                $tabs = [];
+            }
             if ($this->currentTab) {
                 if (isset($tabs[$this->currentTab]['auto_created']) && true === $tabs[$this->currentTab]['auto_created']) {
                     throw new \LogicException('New tab was added automatically when you have added field or group. You should close current tab before adding new one OR add tabs before adding groups and fields.');
@@ -152,6 +154,9 @@ abstract class BaseGroupedMapper extends BaseMapper implements MapperInterface
             }
 
             $groups = $this->getGroups();
+            if($groups === false){
+                $groups = [];
+            }
             if (!isset($groups[$code])) {
                 $groups[$code] = [];
             }
