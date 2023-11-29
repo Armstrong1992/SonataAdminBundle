@@ -49,7 +49,7 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
      *
      * @var string
      */
-    protected $code;
+    protected ?string $code;
 
     /**
      * The class name managed by the admin class.
@@ -217,33 +217,14 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
      * @param string      $class
      * @param string|null $baseControllerName
      */
-    public function __construct($code, $class, $baseControllerName = null)
+    public function __construct(?string $code = null, ?string $class = null, ?string $baseControllerName = null)
     {
-        if (!\is_string($code)) {
-            @trigger_error(sprintf(
-                'Passing other type than string as argument 1 for method %s() is deprecated since'
-                .' sonata-project/admin-bundle 3.65. It will accept only string in version 4.0.',
-                __METHOD__
-            ), \E_USER_DEPRECATED);
-        }
+
         $this->code = $code;
 
-        if (!\is_string($class)) {
-            @trigger_error(sprintf(
-                'Passing other type than string as argument 2 for method %s() is deprecated since'
-                .' sonata-project/admin-bundle 3.65. It will accept only string in version 4.0.',
-                __METHOD__
-            ), \E_USER_DEPRECATED);
-        }
         $this->class = $class;
 
-        if (!\is_string($baseControllerName)) {
-            @trigger_error(sprintf(
-                'Passing other type than string as argument 3 for method %s() is deprecated since'
-                .' sonata-project/admin-bundle 3.84. It will accept only string in version 4.0.',
-                __METHOD__
-            ), \E_USER_DEPRECATED);
-        }
+
         $this->baseControllerName = $baseControllerName;
     }
 
@@ -824,5 +805,39 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
         }
 
         return $this->labelTranslatorStrategy;
+    }
+
+    final public function setCode(string $code): void
+    {
+        if (!isset($this->code)) {
+            $this->code = $code;
+
+            return;
+        }
+
+        throw new \LogicException(
+            sprintf(
+                'Setting code name "%s" in admin class "%s" more than once is forbidden.',
+                $code,
+                static::class
+            )
+        );
+    }
+
+    final public function setClass(string $class): void
+    {
+        if (!isset($this->class)) {
+            $this->class = $class;
+
+            return;
+        }
+
+        throw new \LogicException(
+            sprintf(
+                'Setting class name "%s" in admin class "%s" more than once is forbidden.',
+                $class,
+                static::class
+            )
+        );
     }
 }
