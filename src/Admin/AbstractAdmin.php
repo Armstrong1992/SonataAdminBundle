@@ -371,13 +371,6 @@ abstract class AbstractAdmin extends AbstractTaggedAdmin implements AdminInterfa
     protected $searchResultActions = ['edit', 'show'];
 
     /**
-     * The Access mapping.
-     *
-     * @var array<string, string|string[]> [action1 => requiredRole1, action2 => [requiredRole2, requiredRole3]]
-     */
-    protected $accessMapping = [];
-
-    /**
      * @var MutableTemplateRegistryInterface|null
      */
     private $templateRegistry;
@@ -2697,9 +2690,9 @@ EOT;
         return $this->getRequest()->getSession()->get(sprintf('%s.list_mode', $this->getCode()), 'list');
     }
 
-    public function getAccessMapping()
+    protected function getAccessMapping(): array
     {
-        return $this->accessMapping;
+        return [];
     }
 
     public function checkAccess($action, $object = null)
@@ -3494,7 +3487,7 @@ EOT;
      *
      * @return array<string, string|string[]>
      */
-    protected function getAccess()
+    final protected function getAccess(): array
     {
         $access = array_merge([
             'acl' => 'MASTER',
