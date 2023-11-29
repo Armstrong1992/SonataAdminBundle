@@ -382,14 +382,6 @@ interface AdminInterface extends TaggedAdminInterface, AccessRegistryInterface, 
      */
     public function getDataSourceIterator();
 
-    /**
-     * NEXT_MAJOR: Remove this method.
-     *
-     * @deprecated since sonata-admin/admin-bundle 3.84
-     *
-     * @return void
-     */
-    public function configure();
 
     /**
      * Call before the batch action, allow you to alter the query and the idx.

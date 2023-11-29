@@ -75,7 +75,7 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
     /**
      * @var array<string, array<string, string>>
      */
-    protected $listModes = TaggedAdminInterface::DEFAULT_LIST_MODES;
+    private $listModes = TaggedAdminInterface::DEFAULT_LIST_MODES;
 
     /**
      * @var string
@@ -247,7 +247,7 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
         $this->baseControllerName = $baseControllerName;
     }
 
-    abstract public function initialize();
+    abstract public function initialize(): void;
 
     /**
      * @final since sonata-admin/admin-bundle 3.84
@@ -368,8 +368,7 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
     public function setFilterPersister(?FilterPersisterInterface $filterPersister = null)
     {
         $this->filterPersister = $filterPersister;
-        // NEXT_MAJOR remove the deprecated property will be removed. Needed for persisted filter condition.
-        $this->persistFilters = true;
+
     }
 
     final public function getFilterPersister(): FilterPersisterInterface
