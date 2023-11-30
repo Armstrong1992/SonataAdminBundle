@@ -210,23 +210,6 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
      */
     private $fieldDescriptionFactory;
 
-    /**
-     * NEXT_MAJOR: Change signature to __construct(string $code, string $class, string $baseControllerName).
-     *
-     * @param string      $code
-     * @param string      $class
-     * @param string|null $baseControllerName
-     */
-    public function __construct(?string $code = null, ?string $class = null, ?string $baseControllerName = null)
-    {
-
-        $this->code = $code;
-
-        $this->class = $class;
-
-
-        $this->baseControllerName = $baseControllerName;
-    }
 
     abstract public function initialize(): void;
 
