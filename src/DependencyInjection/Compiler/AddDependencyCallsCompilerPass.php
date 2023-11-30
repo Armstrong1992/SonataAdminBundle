@@ -83,9 +83,14 @@ class AddDependencyCallsCompilerPass implements CompilerPassInterface
                         2 => $defaultController,
                     ], $definition, $parentDefinition);
                 }else{
-                    $definition->addMethodCall('setClass', [$attributes['model_class']]);
-                    $definition->addMethodCall('setBaseControllerName', [$attributes['controller'] ?? $defaultController]);
-                    $definition->addMethodCall('setCode', [$attributes['code'] ?? $id]);
+                    $definition->setMethodCalls(array_merge(
+                        [
+                            ['setClass', [$attributes['model_class']]],
+                            ['setBaseControllerName', [$attributes['controller'] ?? $defaultController]],
+                            ['setCode', [$attributes['code'] ?? $id]]
+                        ],
+                        $definition->getMethodCalls()
+                    ));
                 }
                 $this->applyConfigurationFromAttribute($definition, $attributes);
                 $this->applyDefaults($container, $id, $attributes);
