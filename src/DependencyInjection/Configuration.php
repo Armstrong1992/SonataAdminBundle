@@ -344,7 +344,7 @@ CASESENSITIVE;
                         ->end()
                     ->end()
                 ->end()
-                ->arrayNode('default_admin_service')
+                ->arrayNode('default_admin_services')
                     ->prototype('array')
                         ->children()
                             ->scalarNode('model_manager')->defaultNull()->end()
