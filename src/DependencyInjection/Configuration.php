@@ -49,7 +49,7 @@ CASESENSITIVE;
 
         $rootNode
             ->fixXmlConfig('option')
-            ->fixXmlConfig('admin_service')
+            ->fixXmlConfig('default_admin_service')
             ->fixXmlConfig('template')
             ->fixXmlConfig('extension')
             ->children()
@@ -344,7 +344,7 @@ CASESENSITIVE;
                         ->end()
                     ->end()
                 ->end()
-                ->arrayNode('admin_services')
+                ->arrayNode('default_admin_service')
                     ->prototype('array')
                         ->children()
                             ->scalarNode('model_manager')->defaultNull()->end()
