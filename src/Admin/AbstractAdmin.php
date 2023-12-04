@@ -2613,6 +2613,12 @@ EOT;
         return true;
     }
 
+    protected function configureActionButtons(array $buttonList, string $action, ?object $object = null): array
+    {
+        return $buttonList;
+    }
+
+
     /**
      * @param string      $action
      * @param object|null $object
@@ -2621,118 +2627,102 @@ EOT;
      *
      * @phpstan-param T|null $object
      */
-    public function configureActionButtons($action, $object = null)
+    final public function getActionButtons(string $action, ?object $object = null): array
+    {
+        $defaultButtonList = $this->getDefaultActionButtons($action, $object);
+        $buttonList = $this->configureActionButtons($defaultButtonList, $action, $object);
+
+        foreach ($this->getExtensions() as $extension) {
+            // NEXT_MAJOR: remove method check
+            if (method_exists($extension, 'configureActionButtons')) {
+                $buttonList = $extension->configureActionButtons($this, $buttonList, $action, $object);
+            }
+        }
+
+        return $buttonList;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     *
+     * @phpstan-param T|null $object
+     */
+    private function getDefaultActionButtons(string $action, ?object $object = null): array
     {
         // nothing to do for non-internal actions
         if (!isset(self::INTERNAL_ACTIONS[$action])) {
             return [];
         }
 
+        $buttonList = [];
+
         $actionBit = self::INTERNAL_ACTIONS[$action];
 
-        $list = [];
-
-        if (self::MASK_OF_ACTION_CREATE & $actionBit
+        if (0 !== (self::MASK_OF_ACTION_CREATE & $actionBit)
             && $this->hasRoute('create')
             && $this->hasAccess('create')
         ) {
-            $list['create'] = [
-                // NEXT_MAJOR: Remove this line and use commented line below it instead
-                'template' => $this->getTemplate('button_create'),
-                //                'template' => $this->getTemplateRegistry()->getTemplate('button_create'),
+            $buttonList['create'] = [
+                'template' => $this->getTemplateRegistry()->getTemplate('button_create'),
             ];
         }
 
-        $canAccessObject = self::MASK_OF_ACTIONS_USING_OBJECT & $actionBit && null !== $object && null !== $this->id($object);
+        $canAccessObject = 0 !== (self::MASK_OF_ACTIONS_USING_OBJECT & $actionBit)
+            && null !== $object
+            && null !== $this->id($object);
 
         if ($canAccessObject
-            && self::MASK_OF_ACTION_EDIT & $actionBit
+            && 0 !== (self::MASK_OF_ACTION_EDIT & $actionBit)
             && $this->hasRoute('edit')
-            // NEXT_MAJOR: Replace by `$this->hasAccess`
-            && $this->canAccessObject('edit', $object, 'sonata_deprecation_mute')
+            && $this->hasAccess('edit', $object)
         ) {
-            $list['edit'] = [
-                // NEXT_MAJOR: Remove this line and use commented line below it instead
-                'template' => $this->getTemplate('button_edit'),
-                //'template' => $this->getTemplateRegistry()->getTemplate('button_edit'),
+            $buttonList['edit'] = [
+                'template' => $this->getTemplateRegistry()->getTemplate('button_edit'),
             ];
         }
 
         if ($canAccessObject
-            && self::MASK_OF_ACTION_HISTORY & $actionBit
+            && 0 !== (self::MASK_OF_ACTION_HISTORY & $actionBit)
             && $this->hasRoute('history')
-            // NEXT_MAJOR: Replace by `$this->hasAccess`
-            && $this->canAccessObject('history', $object, 'sonata_deprecation_mute')
+            && $this->hasAccess('history', $object)
         ) {
-            $list['history'] = [
-                // NEXT_MAJOR: Remove this line and use commented line below it instead
-                'template' => $this->getTemplate('button_history'),
-                // 'template' => $this->getTemplateRegistry()->getTemplate('button_history'),
+            $buttonList['history'] = [
+                'template' => $this->getTemplateRegistry()->getTemplate('button_history'),
             ];
         }
 
         if ($canAccessObject
-            && self::MASK_OF_ACTION_ACL & $actionBit
+            && 0 !== (self::MASK_OF_ACTION_ACL & $actionBit)
             && $this->isAclEnabled()
             && $this->hasRoute('acl')
-            // NEXT_MAJOR: Replace by `$this->hasAccess`
-            && $this->canAccessObject('acl', $object, 'sonata_deprecation_mute')
+            && $this->hasAccess('acl', $object)
         ) {
-            $list['acl'] = [
-                // NEXT_MAJOR: Remove this line and use commented line below it instead
-                'template' => $this->getTemplate('button_acl'),
-                // 'template' => $this->getTemplateRegistry()->getTemplate('button_acl'),
+            $buttonList['acl'] = [
+                'template' => $this->getTemplateRegistry()->getTemplate('button_acl'),
             ];
         }
 
         if ($canAccessObject
-            && self::MASK_OF_ACTION_SHOW & $actionBit
+            && 0 !== (self::MASK_OF_ACTION_SHOW & $actionBit)
             && $this->hasRoute('show')
-            // NEXT_MAJOR: Replace by `$this->hasAccess`
-            && $this->canAccessObject('show', $object, 'sonata_deprecation_mute')
+            && $this->hasAccess('show', $object)
             && \count($this->getShow()) > 0
         ) {
-            $list['show'] = [
-                // NEXT_MAJOR: Remove this line and use commented line below it instead
-                'template' => $this->getTemplate('button_show'),
-                // 'template' => $this->getTemplateRegistry()->getTemplate('button_show'),
+            $buttonList['show'] = [
+                'template' => $this->getTemplateRegistry()->getTemplate('button_show'),
             ];
         }
 
-        if (self::MASK_OF_ACTION_LIST & $actionBit
+        if (0 !== (self::MASK_OF_ACTION_LIST & $actionBit)
             && $this->hasRoute('list')
             && $this->hasAccess('list')
         ) {
-            $list['list'] = [
-                // NEXT_MAJOR: Remove this line and use commented line below it instead
-                'template' => $this->getTemplate('button_list'),
-                // 'template' => $this->getTemplateRegistry()->getTemplate('button_list'),
+            $buttonList['list'] = [
+                'template' => $this->getTemplateRegistry()->getTemplate('button_list'),
             ];
         }
 
-        return $list;
-    }
-
-    /**
-     * @param string      $action
-     * @param object|null $object
-     *
-     * @return array<string, array<string, mixed>>
-     *
-     * @phpstan-param T|null $object
-     */
-    public function getActionButtons($action, $object = null)
-    {
-        $list = $this->configureActionButtons($action, $object);
-
-        foreach ($this->getExtensions() as $extension) {
-            // NEXT_MAJOR: remove method check
-            if (method_exists($extension, 'configureActionButtons')) {
-                $list = $extension->configureActionButtons($this, $list, $action, $object);
-            }
-        }
-
-        return $list;
+        return $buttonList;
     }
 
     /**
