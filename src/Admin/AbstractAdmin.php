@@ -441,7 +441,7 @@ abstract class AbstractAdmin extends AbstractTaggedAdmin implements AdminInterfa
         return $fields;
     }
 
-    public function getDataSourceIterator()
+    final public function getDataSourceIterator(): \Iterator
     {
         $datagrid = $this->getDatagrid();
         $datagrid->buildPager();
@@ -449,36 +449,17 @@ abstract class AbstractAdmin extends AbstractTaggedAdmin implements AdminInterfa
         $fields = [];
 
         foreach ($this->getExportFields() as $key => $field) {
-            // NEXT_MAJOR: Remove the following code in favor of the commented one.
-            $label = $this->getTranslationLabel($field, 'export', 'label');
-            $transLabel = $this->getTranslator()->trans($label, [], $this->getTranslationDomain());
-            if ($transLabel === $label) {
-                $fields[$key] = $field;
-            } else {
-                $fields[$transLabel] = $field;
+            if (!\is_string($key)) {
+                $label = $this->getTranslationLabel($field, 'export', 'label');
+                $key   = $this->getTranslator()->trans($label, [], $this->getTranslationDomain());
             }
-//            if (!\is_string($key)) {
-//                $label = $this->getTranslationLabel($field, 'export', 'label');
-//                $key = $this->getTranslator()->trans($label, [], $this->getTranslationDomain());
-//            }
-//
-//            $fields[$key] = $field;
+
+            $fields[$key] = $field;
         }
 
-        if ($this->getDataSource()) {
-            $query = $datagrid->getQuery();
+        $query = $datagrid->getQuery();
 
-            return $this->getDataSource()->createIterator($query, $fields);
-        }
-
-        @trigger_error(sprintf(
-                           'Using "%s()" without setting a "%s" instance in the admin is deprecated since sonata-project/admin-bundle 3.79'
-                           .' and won\'t be possible in 4.0.',
-                           __METHOD__,
-                           DataSourceInterface::class
-                       ), \E_USER_DEPRECATED);
-
-        return $this->getModelManager()->getDataSourceIterator($datagrid, $fields);
+        return $this->getDataSource()->createIterator($query, $fields);
     }
 
     /**
