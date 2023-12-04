@@ -1666,7 +1666,7 @@ class CRUDController implements ContainerAwareInterface
     /**
      * @phpstan-param T $object
      */
-    private function checkParentChildAssociation(Request $request, object $object): void
+    final protected function checkParentChildAssociation(Request $request, object $object): void
     {
         if (!$this->admin->isChild()) {
             return;
