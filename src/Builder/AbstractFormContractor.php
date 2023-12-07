@@ -25,6 +25,7 @@ use Sonata\AdminBundle\Form\Type\ModelTypeList;
 use Sonata\Form\Type\CollectionType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\Form\FormRegistryInterface;
 
 abstract class AbstractFormContractor implements FormContractorInterface
 {
@@ -33,9 +34,15 @@ abstract class AbstractFormContractor implements FormContractorInterface
      */
     protected $formFactory;
 
-    public function __construct(FormFactoryInterface $formFactory)
+    /**
+     * @var FormRegistryInterface
+     */
+    protected $formRegistry;
+
+    public function __construct(FormFactoryInterface $formFactory, FormRegistryInterface $formRegistry)
     {
         $this->formFactory = $formFactory;
+        $this->formRegistry = $formRegistry;
     }
 
     public function fixFieldDescription(AdminInterface $admin, FieldDescriptionInterface $fieldDescription)
@@ -139,6 +146,7 @@ abstract class AbstractFormContractor implements FormContractorInterface
             // NEXT_MAJOR: remove 'Sonata\CoreBundle\Form\Type\CollectionType'
             'Sonata\CoreBundle\Form\Type\CollectionType',
         ])) {
+            dump($fieldDescription);
             if (!$fieldDescription->getAssociationAdmin()) {
                 // NEXT_MAJOR: Use \InvalidArgumentException instead.
                 throw new \RuntimeException(sprintf(
@@ -179,6 +187,20 @@ abstract class AbstractFormContractor implements FormContractorInterface
                 return true;
             }
         }
+
+        // handle form type inheritance and check all parent types
+        $resolvedType = $this->formRegistry->getType($type);
+        $parentType = $resolvedType->getParent();
+        if (null !== $parentType) {
+            $parentType = $parentType->getInnerType()::class;
+
+            // all types have "Symfony\Component\Form\Extension\Core\Type\FormType" as parent
+            // so we ignore it here for performance reasons
+            if (FormType::class !== $parentType) {
+                return $this->isAnyInstanceOf($parentType, $classes);
+            }
+        }
+
 
         return false;
     }
