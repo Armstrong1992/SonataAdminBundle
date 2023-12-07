@@ -146,7 +146,6 @@ abstract class AbstractFormContractor implements FormContractorInterface
             // NEXT_MAJOR: remove 'Sonata\CoreBundle\Form\Type\CollectionType'
             'Sonata\CoreBundle\Form\Type\CollectionType',
         ])) {
-            dump($fieldDescription);
             if (!$fieldDescription->getAssociationAdmin()) {
                 // NEXT_MAJOR: Use \InvalidArgumentException instead.
                 throw new \RuntimeException(sprintf(
