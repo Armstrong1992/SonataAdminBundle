@@ -32,7 +32,7 @@ file that was distributed with this source code.
                 <h4 class="box-title">{% trans with {'%action%': action_label} from 'SonataAdminBundle' %}title_batch_confirmation{% endtrans %}</h4>
             </div>
             <div class="box-body">
-                {% if data.all_elements %}
+                {% if data.all_elements is defined %}
                     {{ 'message_batch_all_confirmation'|trans({}, 'SonataAdminBundle') }}
                 {% else %}
                     {% trans with {'%count%': data.idx|length} from 'SonataAdminBundle' %}message_batch_confirmation{% endtrans %}
