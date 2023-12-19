@@ -79,8 +79,7 @@ abstract class BaseGroupedMapper extends BaseMapper implements MapperInterface
             'collapsed' => false,
             'class' => false,
             'description' => false,
-            'label' => $name, // NEXT_MAJOR: Remove this line and uncomment the next one
-//            'label' => $this->getAdmin()->getLabelTranslatorStrategy()->getLabel($name, $this->getName(), 'group'),
+            'label' => $this->getAdmin()->getLabelTranslatorStrategy()->getLabel($name, $this->getName(), 'group'),
             'translation_domain' => null,
             'name' => $name,
             'box_class' => 'box box-primary',
