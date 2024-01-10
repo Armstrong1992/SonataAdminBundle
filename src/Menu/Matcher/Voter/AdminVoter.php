@@ -67,7 +67,7 @@ class AdminVoter implements VoterInterface
 
         $request = $this->request;
         if (null !== $this->requestStack) {
-            $request = $this->requestStack->getMasterRequest();
+            $request = $this->requestStack->getMainRequest();
         }
 
         if ($admin instanceof AdminInterface
