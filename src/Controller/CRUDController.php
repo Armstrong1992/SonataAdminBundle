@@ -623,18 +623,16 @@ class CRUDController implements ContainerAwareInterface
 
             // show an error message if the form failed validation
             if (!$isFormValid) {
-                if ($this->isXmlHttpRequest() && null !== ($response = $this->handleXmlHttpRequestErrorResponse($request, $form))) {
-                    return $response;
+                   if (!$this->isXmlHttpRequest()) {
+                    $this->addFlash(
+                        'sonata_flash_error',
+                        $this->trans(
+                            'flash_create_error',
+                            ['%name%' => $this->escapeHtml($this->admin->toString($newObject))],
+                            'SonataAdminBundle'
+                        )
+                    );
                 }
-
-                $this->addFlash(
-                    'sonata_flash_error',
-                    $this->trans(
-                        'flash_create_error',
-                        ['%name%' => $this->escapeHtml($this->admin->toString($newObject))],
-                        'SonataAdminBundle'
-                    )
-                );
             } elseif ($this->isPreviewRequested()) {
                 // pick the preview template if the form was valid and preview was requested
                 $templateKey = 'preview';
